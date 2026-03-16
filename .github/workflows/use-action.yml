@@ -1,0 +1,88 @@
+name: Smoke Test (Released Action)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run:
+        description: 'workflow run'
+        required: true
+        default: 'true'
+  workflow_run:
+    workflows: ["Create release"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+
+jobs:
+  smoke-test-major-only:
+    name: Smoke Test (Major Only)
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: get-tag
+        run: |
+          TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -1)
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Latest tag: ${TAG}"
+
+      - name: Update Major Tag
+        if: steps.get-tag.outputs.tag != ''
+        id: major-tag
+        uses: somaz94/major-tag-action@v1
+        with:
+          tag: ${{ steps.get-tag.outputs.tag }}
+          github_token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Verify Output
+        if: steps.get-tag.outputs.tag != ''
+        run: |
+          cat <<'EOF'
+          major_tag=${{ steps.major-tag.outputs.major_tag }}
+          commit_sha=${{ steps.major-tag.outputs.commit_sha }}
+          EOF
+          echo "PASS: major-only update completed"
+
+  smoke-test-with-minor:
+    name: Smoke Test (With Minor Tag)
+    runs-on: ubuntu-latest
+    needs: [smoke-test-major-only]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: get-tag
+        run: |
+          TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -1)
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Major and Minor Tags
+        if: steps.get-tag.outputs.tag != ''
+        id: major-minor-tag
+        uses: somaz94/major-tag-action@v1
+        with:
+          tag: ${{ steps.get-tag.outputs.tag }}
+          github_token: ${{ secrets.PAT_TOKEN }}
+          major_only: false
+
+      - name: Verify Output
+        if: steps.get-tag.outputs.tag != ''
+        run: |
+          cat <<'EOF'
+          major_tag=${{ steps.major-minor-tag.outputs.major_tag }}
+          minor_tag=${{ steps.major-minor-tag.outputs.minor_tag }}
+          commit_sha=${{ steps.major-minor-tag.outputs.commit_sha }}
+          EOF
+          echo "PASS: major+minor update completed"

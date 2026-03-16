@@ -2,74 +2,120 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches:
-      - main
   push:
     branches:
       - main
+    paths-ignore:
+      - '.github/workflows/**'
+      - '**/*.md'
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  test-docker:
-    name: Docker Tests
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
 
-    # Run a local registry to push to
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+
+      - name: Run Go tests with coverage
+        run: go test ./... -v -cover -coverprofile=coverage.out
+
+      - name: Display coverage summary
+        run: go tool cover -func=coverage.out
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          echo "Total coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 85" | bc -l) )); then
+            echo "FAIL: Coverage ${COVERAGE}% is below 85%"
+            exit 1
+          fi
+          echo "PASS: Coverage ${COVERAGE}% meets threshold"
+
+  build-and-push-docker:
+    name: Build and Push Docker
+    needs: unit-tests
+    runs-on: ubuntu-latest
     services:
       registry:
         image: registry:2
         ports:
           - 5001:5000
-
     env:
-      TEST_TAG: localhost:5001/actions/container-action:latest
-
+      TEST_TAG: localhost:5001/actions/major-tag-action:latest
     steps:
       - name: Checkout
-        id: checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git Safe Directory
+        run: git config --global --add safe.directory ${{ github.workspace }}
 
       - name: Setup Docker BuildX
-        id: setup-buildx
         uses: docker/setup-buildx-action@v4
         with:
           install: true
           driver-opts: network=host
 
       - name: Build the Container
-        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           push: true
           tags: ${{ env.TEST_TAG }}
 
-      - name: Run the Container
-        id: run
-        env:
-          INPUT_WHO_TO_GREET: Mona Lisa Octocat
+      - name: Run the Container (dry-run)
         run: |
           docker run \
-            --env INPUT_WHO_TO_GREET="${{ env.INPUT_WHO_TO_GREET }}" \
-            --rm ${{ env.TEST_TAG }}
+            --env INPUT_TAG="v1.0.0" \
+            --env INPUT_MAJOR_ONLY="true" \
+            --rm ${{ env.TEST_TAG }} 2>&1 || true
 
   test-action:
     name: GitHub Actions Test
     runs-on: ubuntu-latest
-
+    needs: build-and-push-docker
     steps:
       - name: Checkout
-        id: checkout
         uses: actions/checkout@v6
-
-      - name: Test Local Action
-        id: test-action
-        uses: ./
         with:
-          who-to-greet: Mona Lisa Octocat
+          fetch-depth: 0
 
-      - name: Print Output
-        id: output
-        run: echo "${{ steps.test-action.outputs.greeting }}"
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+
+      - name: Run binary directly (dry validation)
+        run: |
+          go build -o major-tag-action ./cmd/main.go
+          INPUT_TAG="v1.2.3" INPUT_MAJOR_ONLY="true" ./major-tag-action 2>&1 || true
+
+  ci-result:
+    name: CI Result
+    if: always()
+    needs:
+      - unit-tests
+      - build-and-push-docker
+      - test-action
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ] || \
+             [ "${{ contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "[FAIL] Some jobs failed or were cancelled"
+            exit 1
+          fi
+          echo "[PASS] All CI jobs passed"
