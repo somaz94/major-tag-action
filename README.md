@@ -20,6 +20,8 @@ A Go-based GitHub Action that automatically updates major (and optionally minor)
 
 > For detailed usage examples, authentication options, and troubleshooting, see the [Usage Guide](docs/usage-guide.md).
 
+<br/>
+
 ## Usage
 
 <br/>
