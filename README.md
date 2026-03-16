@@ -1,214 +1,202 @@
-# Create a Container Action
+# Major Tag Action
 
-![Continuous Integration](https://github.com/actions/container-action/actions/workflows/ci.yml/badge.svg)
-![Linter](https://github.com/actions/container-action/actions/workflows/linter.yml/badge.svg)
+[![Continuous Integration](https://github.com/somaz94/major-tag-action/actions/workflows/ci.yml/badge.svg)](https://github.com/somaz94/major-tag-action/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Latest Tag](https://img.shields.io/github/v/tag/somaz94/major-tag-action)](https://github.com/somaz94/major-tag-action/tags)
+[![Top Language](https://img.shields.io/github/languages/top/somaz94/major-tag-action)](https://github.com/somaz94/major-tag-action)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-Major%20Tag%20Action-blue?logo=github)](https://github.com/marketplace/actions/major-tag-action)
 
-Use this template to bootstrap the creation of a container action. :rocket:
+A Go-based GitHub Action that automatically updates major (and optionally minor) version tags to point to the latest semver release. For example, when you release `v1.2.3`, this action updates the `v1` tag to point to the same commit.
 
-This template includes compilation support, tests, a validation workflow,
-publishing, and versioning guidance.
+<br/>
 
-## Create Your Own Action
+## Features
 
-To create your own action, you can use this repository as a template! Just
-follow the below instructions:
+- Automatically extract and update major version tags (e.g., `v1.2.3` -> `v1`)
+- Optionally update minor version tags (e.g., `v1.2.3` -> `v1.2`)
+- Support for both GitHub token and SSH key authentication
+- Lightweight Go-based Docker container
+- Outputs major tag, minor tag, and commit SHA
 
-1. Click the **Use this template** button at the top of the repository
-1. Select **Create a new repository**
-1. Select an owner and name for your new repository
-1. Click **Create repository**
-1. Clone your new repository
-
-> [!IMPORTANT]
->
-> Make sure to remove or update the [`CODEOWNERS`](./CODEOWNERS) file! For
-> details on how to use this file, see
-> [About code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners).
-
-## Initial Setup
-
-After you've cloned the repository to your local machine or codespace, you'll
-need to perform some initial setup steps before you can develop your action.
-
-> [!NOTE]
->
-> You'll need to have a reasonably modern version of
-> [Docker](https://www.docker.com/get-started/) handy (e.g. docker engine
-> version 20 or later).
-
-1. :hammer_and_wrench: Build the container
-
-   Make sure to replace `actions/container-action` with an appropriate label for
-   your container.
-
-   ```bash
-   docker build -t actions/container-action .
-   ```
-
-1. :white_check_mark: Test the container
-
-   You can pass individual environment variables using the `--env` or `-e` flag.
-
-   ```bash
-   $ docker run --env INPUT_WHO_TO_GREET="Mona Lisa Octocat" actions/container-action
-   ::notice file=entrypoint.sh,line=7::Hello, Mona Lisa Octocat!
-   ```
-
-   Or you can pass a file with environment variables using `--env-file`.
-
-   ```bash
-   $ cat ./.env.test
-   INPUT_WHO_TO_GREET="Mona Lisa Octocat"
-
-   $ docker run --env-file ./.env.test actions/container-action
-   ::notice file=entrypoint.sh,line=7::Hello, Mona Lisa Octocat!
-   ```
-
-## Update the Action Metadata
-
-The [`action.yml`](action.yml) file defines metadata about your action, such as
-input(s) and output(s). For details about this file, see
-[Metadata syntax for GitHub Actions](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions).
-
-When you copy this repository, update `action.yml` with the name, description,
-inputs, and outputs for your action.
-
-## Update the Action Code
-
-In this template, the container action runs a shell script,
-[`entrypoint.sh`](./entrypoint.sh), when the container is launched. Since you
-can choose any base Docker image and language you like, you can change this to
-suite your needs. There are a few main things to remember when writing code for
-container actions:
-
-- Inputs are accessed using argument identifiers or environment variables
-  (depending on what you set in your `action.yml`). For example, the first input
-  to this action, `who-to-greet`, can be accessed in the entrypoint script using
-  the `$INPUT_WHO_TO_GREET` environment variable.
-
-  ```bash
-  GREETING="Hello, $INPUT_WHO_TO_GREET!"
-  ```
-
-- GitHub Actions supports a number of different workflow commands such as
-  creating outputs, setting environment variables, and more. These are
-  accomplished by writing to different `GITHUB_*` environment variables. For
-  more information, see
-  [Workflow commands](https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions).
-
-  | Scenario              | Example                                         |
-  | --------------------- | ----------------------------------------------- |
-  | Set environment vars  | `echo "MY_VAR=my-value" >> "$GITHUB_ENV"`       |
-  | Set outputs           | `echo "greeting=$GREETING" >> "$GITHUB_OUTPUT"` |
-  | Prepend to `PATH`     | `echo "$HOME/.local/bin" >> "$GITHUB_PATH"`     |
-  | Set `pre`/`post` vars | `echo "MY_VAR=my-value" >> "$GITHUB_STATE"`     |
-  | Set step summary      | `echo "{markdown}" >> "$GITHUB_STEP_SUMMARY"`   |
-
-  You can write multiline strings using the following syntax:
-
-  ```bash
-  {
-    echo "JSON_RESPONSE<<EOF"
-    curl https://example.com
-    echo "EOF"
-  } >> "$GITHUB_ENV"
-  ```
-
-- Make sure that the script being run is executable!
-
-  ```bash
-  git add entrypoint.sh
-  git update-index --chmod=+x entrypoint.sh
-  ```
-
-So, what are you waiting for? Go ahead and start customizing your action!
-
-1. Create a new branch
-
-   ```bash
-   git checkout -b releases/v1
-   ```
-
-1. Replace the contents of `entrypoint.sh` with your action code
-1. Build and test the container
-
-   ```bash
-   docker build -t actions/container-action .
-   docker run actions/container-action "Mona Lisa Octocat"
-   ```
-
-1. Commit your changes
-
-   ```bash
-   git add .
-   git commit -m "My first action is ready!"
-   ```
-
-1. Push them to your repository
-
-   ```bash
-   git push -u origin releases/v1
-   ```
-
-1. Create a pull request and get feedback on your action
-1. Merge the pull request into the `main` branch
-
-Your action is now published! :rocket:
-
-For information about versioning your action, see
-[Versioning](https://github.com/actions/toolkit/blob/main/docs/action-versioning.md)
-in the GitHub Actions toolkit.
-
-## Validate the Action
-
-You can now validate the action by referencing it in a workflow file. For
-example, [`ci.yml`](./.github/workflows/ci.yml) demonstrates how to reference an
-action in the same repository.
-
-```yaml
-steps:
-  - name: Checkout
-    id: checkout
-    uses: actions/checkout@v4
-
-  - name: Test Local Action
-    id: test-action
-    uses: ./
-    with:
-      who-to-greet: Mona Lisa Octocat
-
-  - name: Print Output
-    id: output
-    run: echo "${{ steps.test-action.outputs.greeting }}"
-```
-
-For example workflow runs, check out the
-[Actions tab](https://github.com/actions/container-action/actions)! :rocket:
+> For detailed usage examples, authentication options, and troubleshooting, see the [Usage Guide](docs/usage-guide.md).
 
 ## Usage
 
-After testing, you can create version tag(s) that developers can use to
-reference different stable versions of your action. For more information, see
-[Versioning](https://github.com/actions/toolkit/blob/main/docs/action-versioning.md)
-in the GitHub Actions toolkit.
+<br/>
 
-To include the action in a workflow in another repository, you can use the
-`uses` syntax with the `@` symbol to reference a specific branch, tag, or commit
-hash.
+### Basic
 
 ```yaml
 steps:
   - name: Checkout
-    id: checkout
-    uses: actions/checkout@v4
-
-  - name: Test Local Action
-    id: test-action
-    uses: actions/container-action@v1 # Commit with the `v1` tag
+    uses: actions/checkout@v6
     with:
-      who-to-greet: Mona Lisa Octocat
+      fetch-depth: 0
 
-  - name: Print Output
-    id: output
-    run: echo "${{ steps.test-action.outputs.greeting }}"
+  - name: Update major version tag
+    uses: somaz94/major-tag-action@v1
+    with:
+      tag: ${{ github.ref_name }}
+      github_token: ${{ secrets.PAT_TOKEN }}
 ```
+
+<br/>
+
+### In Release Workflow
+
+```yaml
+name: Create release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+
+      - name: Update major version tag
+        uses: somaz94/major-tag-action@v1
+        with:
+          tag: ${{ github.ref_name }}
+          github_token: ${{ secrets.PAT_TOKEN }}
+```
+
+<br/>
+
+### With Minor Tag
+
+```yaml
+- name: Update major and minor version tags
+  uses: somaz94/major-tag-action@v1
+  with:
+    tag: ${{ github.ref_name }}
+    github_token: ${{ secrets.PAT_TOKEN }}
+    major_only: false
+```
+
+This updates both `v1` and `v1.2` for a `v1.2.3` release.
+
+<br/>
+
+### With SSH Key
+
+```yaml
+- name: Update major version tag via SSH
+  uses: somaz94/major-tag-action@v1
+  with:
+    tag: ${{ github.ref_name }}
+    ssh_key: ${{ secrets.SSH_PRIVATE_KEY }}
+```
+
+<br/>
+
+## Inputs
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| `tag` | The full semver tag (e.g., `v1.2.3`) | Yes | - |
+| `github_token` | GitHub token for pushing tags | No | `${{ github.token }}` |
+| `ssh_key` | SSH private key (alternative to token) | No | `` |
+| `major_only` | Only update major tag. Set `false` to also update minor tag | No | `true` |
+
+<br/>
+
+## Outputs
+
+| Output | Description | Example |
+|--------|-------------|---------|
+| `major_tag` | The major version tag updated | `v1` |
+| `minor_tag` | The minor version tag updated (empty if `major_only: true`) | `v1.2` |
+| `commit_sha` | The commit SHA the tags point to | `abc123def456` |
+
+<br/>
+
+## Why?
+
+GitHub Actions users reference actions by major version (e.g., `uses: owner/action@v1`). When you release `v1.2.3`, the `v1` tag needs to be updated so users automatically get the latest patch. This action automates that process, replacing the common shell script pattern found in most release workflows.
+
+<br/>
+
+## Project Structure
+
+```
+.
+├── cmd/
+│   └── main.go              # Entry point
+├── internal/
+│   ├── config/
+│   │   ├── config.go        # Configuration from env vars
+│   │   └── config_test.go
+│   ├── output/
+│   │   ├── output.go        # GitHub Actions output helpers
+│   │   └── output_test.go
+│   └── tagger/
+│       ├── git.go           # Git operations
+│       ├── tagger.go        # Tag update logic
+│       └── tagger_test.go
+├── action.yml
+├── Dockerfile
+├── Makefile
+└── go.mod
+```
+
+<br/>
+
+## Development
+
+<br/>
+
+### Prerequisites
+
+- Go 1.26+
+- Docker (for container builds)
+
+<br/>
+
+### Build
+
+```bash
+make build
+```
+
+<br/>
+
+### Test
+
+```bash
+make test
+```
+
+<br/>
+
+### Coverage
+
+```bash
+make cover
+```
+
+<br/>
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+<br/>
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
