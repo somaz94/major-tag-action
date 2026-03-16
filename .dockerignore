@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# GitHub
+.github
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+CODEOWNERS
+
+# Development
+Makefile
+cliff.toml
+*.out
+
+# IDE
+.idea
+.vscode
+*.code-workspace
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.test
+
+# Test files
+*_test.go

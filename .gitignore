@@ -1,8 +1,13 @@
+# Binary
+major-tag-action
+main
+*.out
+
 # Logs
 logs
 *.log
 
-# Diagnostic reports (https://nodejs.org/api/report.html)
+# Diagnostic reports
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Runtime data
@@ -21,4 +26,5 @@ Thumbs.db
 
 # IDE files
 .idea
+.vscode
 *.code-workspace

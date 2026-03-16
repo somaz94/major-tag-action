@@ -1,11 +1,19 @@
-# Set the base image to use for subsequent instructions
+# Build stage
+FROM golang:1.26-alpine AS builder
+
+WORKDIR /build
+
+COPY go.mod ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /major-tag-action ./cmd/main.go
+
+# Runtime stage
 FROM alpine:3.23
 
-# Set the working directory inside the container
-WORKDIR /usr/src
+RUN apk add --no-cache git openssh-client
 
-# Copy any source file(s) required for the action
-COPY entrypoint.sh .
+COPY --from=builder /major-tag-action /usr/local/bin/major-tag-action
 
-# Configure the container to be run as an executable
-ENTRYPOINT ["/usr/src/entrypoint.sh"]
+ENTRYPOINT ["major-tag-action"]

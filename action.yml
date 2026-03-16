@@ -1,26 +1,41 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: Major Tag Action
+description: Automatically update major version tag (e.g., v1) to point to the latest semver release tag
+author: somaz94
 
-# Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
-  icon: heart
-  color: red
+  icon: tag
+  color: blue
 
-# Define your inputs here.
 inputs:
-  who-to-greet:
-    description: Your input description here
+  tag:
+    description: 'The full semver tag to extract major version from (e.g., v1.2.3)'
     required: true
-    default: World
+  github_token:
+    description: 'GitHub token for pushing tags'
+    required: false
+    default: ${{ github.token }}
+  ssh_key:
+    description: 'SSH private key for pushing tags (alternative to github_token)'
+    required: false
+    default: ''
+  major_only:
+    description: 'Only update major version tag (e.g., v1). Set to false to also update minor tag (e.g., v1.2)'
+    required: false
+    default: 'true'
 
-# Define your outputs here.
 outputs:
-  greeting:
-    description: Your output description here
+  major_tag:
+    description: 'The major version tag that was updated (e.g., v1)'
+  minor_tag:
+    description: 'The minor version tag that was updated (e.g., v1.2), empty if major_only is true'
+  commit_sha:
+    description: 'The commit SHA the tags point to'
 
 runs:
   using: docker
   image: Dockerfile
   env:
-    INPUT_WHO_TO_GREET: ${{ inputs.who-to-greet }}
+    INPUT_TAG: ${{ inputs.tag }}
+    INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
+    INPUT_SSH_KEY: ${{ inputs.ssh_key }}
+    INPUT_MAJOR_ONLY: ${{ inputs.major_only }}
