@@ -23,6 +23,10 @@ func main() {
 		output.LogWarning("Received shutdown signal, cleaning up...")
 		cancel()
 	}()
+	defer func() {
+		signal.Stop(sigCh)
+		close(sigCh)
+	}()
 
 	if err := run(ctx); err != nil {
 		output.LogError(err.Error())
@@ -51,14 +55,18 @@ func run(ctx context.Context) error {
 	}
 
 	// Set outputs
-	if err := output.SetOutput("major_tag", result.MajorTag); err != nil {
-		output.LogWarning(fmt.Sprintf("Failed to set major_tag output: %v", err))
+	outputs := []struct {
+		name  string
+		value string
+	}{
+		{"major_tag", result.MajorTag},
+		{"minor_tag", result.MinorTag},
+		{"commit_sha", result.CommitSHA},
 	}
-	if err := output.SetOutput("minor_tag", result.MinorTag); err != nil {
-		output.LogWarning(fmt.Sprintf("Failed to set minor_tag output: %v", err))
-	}
-	if err := output.SetOutput("commit_sha", result.CommitSHA); err != nil {
-		output.LogWarning(fmt.Sprintf("Failed to set commit_sha output: %v", err))
+	for _, o := range outputs {
+		if err := output.SetOutput(o.name, o.value); err != nil {
+			output.LogWarning(fmt.Sprintf("Failed to set %s output: %v", o.name, err))
+		}
 	}
 
 	return nil

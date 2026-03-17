@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/somaz94/major-tag-action/internal/tagger"
@@ -89,7 +90,7 @@ func TestRunWithGitHubOutput(t *testing.T) {
 	defer func() { tagger.RunCommand = original }()
 
 	tmpDir := t.TempDir()
-	outputFile := tmpDir + "/github_output"
+	outputFile := filepath.Join(tmpDir, "github_output")
 	os.WriteFile(outputFile, []byte{}, 0644)
 
 	t.Setenv("INPUT_TAG", "v1.2.3")

@@ -13,7 +13,7 @@ build: ## Build the binary
 test: test-unit ## Run unit tests (alias)
 
 test-unit: ## Run unit tests with coverage
-	go test ./internal/... ./cmd/... -v -cover
+	go test ./internal/... ./cmd/... -v -race -cover
 
 test-all: test-unit ## Run all tests
 

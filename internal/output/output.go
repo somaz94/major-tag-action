@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const multilineDelimiter = "EOF"
+
 // SetOutput sets a GitHub Actions output variable.
 func SetOutput(name, value string) error {
 	outputFile := os.Getenv("GITHUB_OUTPUT")
@@ -14,15 +16,14 @@ func SetOutput(name, value string) error {
 		return nil
 	}
 
-	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to open GITHUB_OUTPUT: %w", err)
 	}
 	defer f.Close()
 
 	if strings.Contains(value, "\n") {
-		delimiter := "EOF"
-		_, err = fmt.Fprintf(f, "%s<<%s\n%s\n%s\n", name, delimiter, value, delimiter)
+		_, err = fmt.Fprintf(f, "%s<<%s\n%s\n%s\n", name, multilineDelimiter, value, multilineDelimiter)
 	} else {
 		_, err = fmt.Fprintf(f, "%s=%s\n", name, value)
 	}
