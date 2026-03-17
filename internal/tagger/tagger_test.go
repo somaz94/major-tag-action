@@ -503,6 +503,60 @@ func TestConfigureSSHAuthBadHome(t *testing.T) {
 	}
 }
 
+func TestConfigureSSHAuthWriteKeyError(t *testing.T) {
+	// .ssh dir exists but key path is a directory → WriteFile fails
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	os.MkdirAll(tmpDir+"/.ssh/id_rsa", 0700) // create dir where file should be
+
+	err := configureSSHAuth("fake-key")
+	if err == nil {
+		t.Fatal("expected error for write key failure")
+	}
+}
+
+func TestConfigureSSHAuthWriteKnownHostsError(t *testing.T) {
+	// key write succeeds, but known_hosts path is a directory → WriteFile fails
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	os.MkdirAll(tmpDir+"/.ssh/known_hosts", 0700) // create dir where file should be
+
+	err := configureSSHAuth("fake-key")
+	if err == nil {
+		t.Fatal("expected error for write known_hosts failure")
+	}
+}
+
+func TestExtractRepoPathHTTPS(t *testing.T) {
+	result := extractRepoPath("https://github.com/owner/repo.git")
+	if result != "owner/repo" {
+		t.Errorf("expected owner/repo, got %s", result)
+	}
+}
+
+func TestExtractRepoPathSSH(t *testing.T) {
+	result := extractRepoPath("git@github.com:owner/repo.git")
+	if result != "owner/repo" {
+		t.Errorf("expected owner/repo, got %s", result)
+	}
+}
+
+func TestExtractRepoPathPlain(t *testing.T) {
+	// URL without github.com prefix patterns → returns as-is minus .git
+	result := extractRepoPath("https://gitlab.com/owner/repo.git")
+	if result != "https://gitlab.com/owner/repo" {
+		t.Errorf("unexpected result: %s", result)
+	}
+}
+
+func TestExtractRepoPathNoSplit(t *testing.T) {
+	// https URL with github.com but no slash after it
+	result := extractRepoPath("https://github.com")
+	if result != "https://github.com" {
+		t.Errorf("unexpected result: %s", result)
+	}
+}
+
 func TestUpdateTagDeleteRemoteErrorContinues(t *testing.T) {
 	// When tag exists, delete local succeeds, delete remote fails (should continue)
 	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
