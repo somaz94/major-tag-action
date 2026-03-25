@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.0.2](https://github.com/somaz94/major-tag-action/compare/v1.0.1...v1.0.2) (2026-03-25)
+
+### Bug Fixes
+
+- add SHA validation, error context, and security hardening ([4938cfd](https://github.com/somaz94/major-tag-action/commit/4938cfd52f52a34e38fcde82ff2947406cf68e8b))
+
+### Documentation
+
+- add no-push rule to CLAUDE.md ([fb8e802](https://github.com/somaz94/major-tag-action/commit/fb8e8029f92483128f29b3c939196d13c3faa31a))
+- add CLAUDE.md project guide ([0100b5f](https://github.com/somaz94/major-tag-action/commit/0100b5f931ab0db1828b247646a349c2510b4a03))
+
+### Continuous Integration
+
+- skip auto-generated changelog and contributors commits in release notes ([a75fd45](https://github.com/somaz94/major-tag-action/commit/a75fd45a98bdca0e09857fff79f6cc770c157479))
+- revert to body_path RELEASE.md in release workflow ([b28f94c](https://github.com/somaz94/major-tag-action/commit/b28f94cf2fa24014f805c45148cc22d01e275a06))
+- use generate_release_notes instead of body_path in release workflow ([b154769](https://github.com/somaz94/major-tag-action/commit/b15476991f1ea4a352a3aaa22d7aa77cd2b8d680))
+- migrate gitlab-mirror workflow to multi-git-mirror action ([44f3af9](https://github.com/somaz94/major-tag-action/commit/44f3af9fcd6729c4c897e74e0489b1bbf15bd804))
+- use somaz94/contributors-action@v1 for contributors generation ([5884f99](https://github.com/somaz94/major-tag-action/commit/5884f99a34ee20bc806895788440217f85160edd))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v1.0.1](https://github.com/somaz94/major-tag-action/compare/v1.0.0...v1.0.1) (2026-03-17)
 
 ### Bug Fixes
@@ -11,11 +36,6 @@ All notable changes to this project will be documented in this file.
 ### Code Refactoring
 
 - improve code quality and consistency ([1b83e47](https://github.com/somaz94/major-tag-action/commit/1b83e47047f5b053830a199fc2db61a20550f130))
-
-### Documentation
-
-- update CONTRIBUTORS.md ([c160458](https://github.com/somaz94/major-tag-action/commit/c16045816805db9f86a64af336daa6ef3d681472))
-- update changelog ([8eff0bb](https://github.com/somaz94/major-tag-action/commit/8eff0bbd9491807ee1517831f0461746425208b7))
 
 ### Tests
 
@@ -27,7 +47,6 @@ All notable changes to this project will be documented in this file.
 
 ### Contributors
 
-- GitHub Actions
 - somaz
 
 <br/>
