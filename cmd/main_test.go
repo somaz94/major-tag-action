@@ -24,7 +24,7 @@ func TestRunSuccess(t *testing.T) {
 	original := tagger.RunCommand
 	tagger.RunCommand = func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
-			return []byte("abc123\n"), nil
+			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil
@@ -77,7 +77,7 @@ func TestRunWithGitHubOutput(t *testing.T) {
 	original := tagger.RunCommand
 	tagger.RunCommand = func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
-			return []byte("abc123\n"), nil
+			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil

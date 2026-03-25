@@ -3,8 +3,12 @@ package tagger
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 )
+
+// validSHAPattern matches SHA-1 (40 hex) or SHA-256 (64 hex) commit hashes.
+var validSHAPattern = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
 
 // RunCommand is a variable to allow mocking in tests.
 var RunCommand = func(args ...string) ([]byte, error) {
@@ -30,7 +34,11 @@ func ResolveTagSHA(tag string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve SHA for tag %q: %w", tag, err)
 	}
-	return strings.TrimSpace(string(out)), nil
+	sha := strings.TrimSpace(string(out))
+	if !validSHAPattern.MatchString(sha) {
+		return "", fmt.Errorf("invalid commit SHA format for tag %q: %q", tag, sha)
+	}
+	return sha, nil
 }
 
 // TagExists checks if a tag exists locally.
@@ -45,26 +53,39 @@ func TagExists(tag string) bool {
 // DeleteLocalTag deletes a local tag.
 func DeleteLocalTag(tag string) error {
 	_, err := RunCommand("tag", "-d", tag)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete local tag %q: %w", tag, err)
+	}
+	return nil
 }
 
 // DeleteRemoteTag deletes a remote tag.
 func DeleteRemoteTag(tag string) error {
 	_, err := RunCommand("push", "origin", ":refs/tags/"+tag)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete remote tag %q: %w", tag, err)
+	}
+	return nil
 }
 
 // CreateTag creates a local tag pointing to a specific commit.
 func CreateTag(tag, commitSHA string) error {
 	_, err := RunCommand("tag", tag, commitSHA)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to create tag %q: %w", tag, err)
+	}
+	return nil
 }
 
 // PushTag pushes a tag to origin.
 func PushTag(tag string) error {
 	_, err := RunCommand("push", "origin", tag)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to push tag %q: %w", tag, err)
+	}
+	return nil
 }
+
 
 // GetRemoteURL returns the remote origin URL.
 func GetRemoteURL() (string, error) {
@@ -78,5 +99,8 @@ func GetRemoteURL() (string, error) {
 // SetRemoteURL updates the remote origin URL.
 func SetRemoteURL(url string) error {
 	_, err := RunCommand("remote", "set-url", "origin", url)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to set remote URL: %w", err)
+	}
+	return nil
 }

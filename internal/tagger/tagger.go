@@ -60,8 +60,12 @@ func ParseMinorTag(tag string) (string, error) {
 }
 
 // sshDir returns the .ssh directory path under HOME.
-func sshDir() string {
-	return filepath.Join(os.Getenv("HOME"), ".ssh")
+func sshDir() (string, error) {
+	home := os.Getenv("HOME")
+	if home == "" {
+		return "", fmt.Errorf("HOME environment variable is not set")
+	}
+	return filepath.Join(home, ".ssh"), nil
 }
 
 // ConfigureAuth sets up git authentication using token or SSH key.
@@ -76,7 +80,10 @@ func ConfigureAuth(token, sshKey string) error {
 }
 
 func configureSSHAuth(sshKey string) error {
-	sshPath := sshDir()
+	sshPath, err := sshDir()
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(sshPath, 0700); err != nil {
 		return fmt.Errorf("failed to create .ssh directory: %w", err)
 	}
@@ -87,7 +94,7 @@ func configureSSHAuth(sshKey string) error {
 	}
 
 	knownHostsPath := filepath.Join(sshPath, "known_hosts")
-	if err := os.WriteFile(knownHostsPath, []byte(githubSSHRSAKey), 0644); err != nil {
+	if err := os.WriteFile(knownHostsPath, []byte(githubSSHRSAKey), 0600); err != nil {
 		return fmt.Errorf("failed to write known_hosts: %w", err)
 	}
 
@@ -133,7 +140,7 @@ func UpdateTag(tagName, commitSHA string) error {
 	if TagExists(tagName) {
 		output.LogInfo(fmt.Sprintf("Deleting existing tag '%s'", tagName))
 		if err := DeleteLocalTag(tagName); err != nil {
-			return fmt.Errorf("failed to delete local tag %q: %w", tagName, err)
+			return err
 		}
 		if err := DeleteRemoteTag(tagName); err != nil {
 			output.LogWarning(fmt.Sprintf("Failed to delete remote tag '%s' (may not exist): continuing", tagName))
@@ -142,11 +149,11 @@ func UpdateTag(tagName, commitSHA string) error {
 
 	output.LogInfo(fmt.Sprintf("Creating tag '%s' pointing to %s", tagName, commitSHA))
 	if err := CreateTag(tagName, commitSHA); err != nil {
-		return fmt.Errorf("failed to create tag %q: %w", tagName, err)
+		return err
 	}
 
 	if err := PushTag(tagName); err != nil {
-		return fmt.Errorf("failed to push tag %q: %w", tagName, err)
+		return err
 	}
 
 	return nil

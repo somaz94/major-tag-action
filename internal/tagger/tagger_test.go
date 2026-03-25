@@ -3,6 +3,7 @@ package tagger
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -114,15 +115,29 @@ func TestTagExistsError(t *testing.T) {
 }
 
 func TestResolveTagSHA(t *testing.T) {
-	restore := mockRunner([]byte("abc1234567890\n"), nil)
+	validSHA := "abc1234567890abc1234567890abc1234567890a"
+	restore := mockRunner([]byte(validSHA+"\n"), nil)
 	defer restore()
 
 	sha, err := ResolveTagSHA("v1.0.0")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if sha != "abc1234567890" {
-		t.Errorf("expected abc1234567890, got %s", sha)
+	if sha != validSHA {
+		t.Errorf("expected %s, got %s", validSHA, sha)
+	}
+}
+
+func TestResolveTagSHAInvalidFormat(t *testing.T) {
+	restore := mockRunner([]byte("not-a-valid-sha\n"), nil)
+	defer restore()
+
+	_, err := ResolveTagSHA("v1.0.0")
+	if err == nil {
+		t.Fatal("expected error for invalid SHA format")
+	}
+	if !strings.Contains(err.Error(), "invalid commit SHA format") {
+		t.Errorf("expected 'invalid commit SHA format' error, got: %v", err)
 	}
 }
 
@@ -248,7 +263,7 @@ func TestUpdateTagPushError(t *testing.T) {
 func TestRunSuccess(t *testing.T) {
 	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
-			return []byte("abc123def456\n"), nil
+			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil
@@ -272,15 +287,15 @@ func TestRunSuccess(t *testing.T) {
 	if result.MinorTag != "" {
 		t.Errorf("expected empty minor tag, got %s", result.MinorTag)
 	}
-	if result.CommitSHA != "abc123def456" {
-		t.Errorf("expected abc123def456, got %s", result.CommitSHA)
+	if result.CommitSHA != "abc123def456abc123def456abc123def456abc1" {
+		t.Errorf("expected abc123def456abc123def456abc123def456abc1, got %s", result.CommitSHA)
 	}
 }
 
 func TestRunWithMinorTag(t *testing.T) {
 	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
-			return []byte("abc123\n"), nil
+			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil
@@ -450,7 +465,7 @@ func TestUpdateTagDeleteLocalError(t *testing.T) {
 func TestRunUpdateMajorTagError(t *testing.T) {
 	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
-			return []byte("abc123\n"), nil
+			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil
@@ -583,7 +598,7 @@ func TestRunMinorTagUpdateError(t *testing.T) {
 	callCount := 0
 	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
-			return []byte("abc123\n"), nil
+			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil
@@ -614,7 +629,7 @@ func TestRunMinorTagUpdateError(t *testing.T) {
 func TestRunDefaultWorkspace(t *testing.T) {
 	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
-			return []byte("abc123\n"), nil
+			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil
@@ -644,7 +659,7 @@ func TestRunSafeDirectoryError(t *testing.T) {
 			return nil, fmt.Errorf("config error")
 		}
 		if args[0] == "rev-list" {
-			return []byte("abc123\n"), nil
+			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil
@@ -671,7 +686,7 @@ func TestRunSafeDirectoryError(t *testing.T) {
 func TestRunWithSSHKey(t *testing.T) {
 	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
-			return []byte("abc123\n"), nil
+			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil
@@ -689,5 +704,38 @@ func TestRunWithSSHKey(t *testing.T) {
 	}
 	if result.MajorTag != "v2" {
 		t.Errorf("expected v2, got %s", result.MajorTag)
+	}
+}
+
+func TestConfigureSSHAuthEmptyHome(t *testing.T) {
+	t.Setenv("HOME", "")
+
+	err := configureSSHAuth("fake-key")
+	if err == nil {
+		t.Fatal("expected error for empty HOME")
+	}
+	if !strings.Contains(err.Error(), "HOME environment variable") {
+		t.Errorf("expected HOME error, got: %v", err)
+	}
+}
+
+func TestValidSHAPattern(t *testing.T) {
+	tests := []struct {
+		input string
+		valid bool
+	}{
+		{"abc123def456abc123def456abc123def456abc1", true},   // 40 hex (SHA-1)
+		{"abc123def456abc123def456abc123def456abc1aabbccdd00112233aabbccdd", true}, // 64 hex (SHA-256)
+		{"not-a-sha", false},
+		{"ABC123DEF456ABC123DEF456ABC123DEF456ABC1", false}, // uppercase
+		{"abc123", false},  // too short
+		{"", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			if validSHAPattern.MatchString(tt.input) != tt.valid {
+				t.Errorf("validSHAPattern(%q) = %v, want %v", tt.input, !tt.valid, tt.valid)
+			}
+		})
 	}
 }
