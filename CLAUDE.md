@@ -2,8 +2,6 @@
 
 <br/>
 
-## Commit Guidelines
-
 - Do not include `Co-Authored-By` lines in commit messages.
 - Do not push to remote. Only commit. The user will push manually.
 - Do not modify git config.
@@ -55,8 +53,6 @@ Outputs: `major_tag`, `minor_tag`, `commit_sha`
 - Docker: multi-stage build (golang:1.26-alpine → alpine:3.23)
 
 <br/>
-
-## Language
 
 - Communicate with the user in Korean.
 - All documentation and code comments must be written in English.
