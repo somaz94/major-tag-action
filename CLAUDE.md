@@ -27,9 +27,21 @@ make lint        # Run go vet
 ## Key Directories
 
 - `cmd/` — Entry point (main.go, context/signal handling)
-- `internal/config/` — Configuration from env vars (INPUT_*)
-- `internal/tagger/` — Core logic: tagger.go (semver parsing, version extraction), git.go (tag operations)
+- `internal/config/` — Configuration from env vars (INPUT_*), with Validate() method
+- `internal/tagger/` — Core logic with interface-based dependency injection:
+  - `errors.go` — Sentinel errors (ErrInvalidTag, ErrAuthFailed, ErrTagUpdate, ErrInvalidSHA)
+  - `git.go` — GitRunner interface, ExecRunner implementation, Git struct with methods
+  - `tagger.go` — Tagger struct orchestrating tag update workflow
 - `internal/output/` — GitHub Actions output helpers
+
+<br/>
+
+## Architecture
+
+- **Dependency Injection**: `GitRunner` interface enables testability without package-level mocks
+- **Construction**: `DefaultTagger()` → `NewTagger(NewGit(&ExecRunner{}))` for production
+- **Testing**: `MockRunner` struct implements `GitRunner` for test isolation
+- **Context**: `context.Context` propagated through `Tagger.Run()` for cancellation support
 
 <br/>
 

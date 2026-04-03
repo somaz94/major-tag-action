@@ -1,11 +1,36 @@
 package tagger
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
 )
+
+// MockRunner implements GitRunner for testing.
+type MockRunner struct {
+	Fn func(args ...string) ([]byte, error)
+}
+
+func (m *MockRunner) Run(args ...string) ([]byte, error) {
+	return m.Fn(args...)
+}
+
+func newMockGit(fn func(args ...string) ([]byte, error)) *Git {
+	return NewGit(&MockRunner{Fn: fn})
+}
+
+func newMockTagger(fn func(args ...string) ([]byte, error)) *Tagger {
+	return NewTagger(newMockGit(fn))
+}
+
+func staticMockGit(output []byte, err error) *Git {
+	return newMockGit(func(args ...string) ([]byte, error) {
+		return output, err
+	})
+}
 
 func TestParseMajorTag(t *testing.T) {
 	tests := []struct {
@@ -29,6 +54,9 @@ func TestParseMajorTag(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error for %q, got %q", tt.input, result)
+				}
+				if !errors.Is(err, ErrInvalidTag) {
+					t.Errorf("expected ErrInvalidTag, got: %v", err)
 				}
 				return
 			}
@@ -73,53 +101,35 @@ func TestParseMinorTag(t *testing.T) {
 	}
 }
 
-func mockRunner(output []byte, err error) func() {
-	original := RunCommand
-	RunCommand = func(args ...string) ([]byte, error) {
-		return output, err
-	}
-	return func() { RunCommand = original }
-}
-
-func mockRunnerFunc(fn func(args ...string) ([]byte, error)) func() {
-	original := RunCommand
-	RunCommand = fn
-	return func() { RunCommand = original }
-}
-
 func TestTagExists(t *testing.T) {
-	restore := mockRunner([]byte("v1\n"), nil)
-	defer restore()
+	git := staticMockGit([]byte("v1\n"), nil)
 
-	if !TagExists("v1") {
+	if !git.TagExists("v1") {
 		t.Error("expected tag to exist")
 	}
 }
 
 func TestTagExistsNotFound(t *testing.T) {
-	restore := mockRunner([]byte("\n"), nil)
-	defer restore()
+	git := staticMockGit([]byte("\n"), nil)
 
-	if TagExists("v1") {
+	if git.TagExists("v1") {
 		t.Error("expected tag not to exist")
 	}
 }
 
 func TestTagExistsError(t *testing.T) {
-	restore := mockRunner(nil, fmt.Errorf("git error"))
-	defer restore()
+	git := staticMockGit(nil, fmt.Errorf("git error"))
 
-	if TagExists("v1") {
+	if git.TagExists("v1") {
 		t.Error("expected false on error")
 	}
 }
 
 func TestResolveTagSHA(t *testing.T) {
 	validSHA := "abc1234567890abc1234567890abc1234567890a"
-	restore := mockRunner([]byte(validSHA+"\n"), nil)
-	defer restore()
+	git := staticMockGit([]byte(validSHA+"\n"), nil)
 
-	sha, err := ResolveTagSHA("v1.0.0")
+	sha, err := git.ResolveTagSHA("v1.0.0")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -129,51 +139,46 @@ func TestResolveTagSHA(t *testing.T) {
 }
 
 func TestResolveTagSHAInvalidFormat(t *testing.T) {
-	restore := mockRunner([]byte("not-a-valid-sha\n"), nil)
-	defer restore()
+	git := staticMockGit([]byte("not-a-valid-sha\n"), nil)
 
-	_, err := ResolveTagSHA("v1.0.0")
+	_, err := git.ResolveTagSHA("v1.0.0")
 	if err == nil {
 		t.Fatal("expected error for invalid SHA format")
 	}
-	if !strings.Contains(err.Error(), "invalid commit SHA format") {
-		t.Errorf("expected 'invalid commit SHA format' error, got: %v", err)
+	if !errors.Is(err, ErrInvalidSHA) {
+		t.Errorf("expected ErrInvalidSHA, got: %v", err)
 	}
 }
 
 func TestResolveTagSHAError(t *testing.T) {
-	restore := mockRunner(nil, fmt.Errorf("not found"))
-	defer restore()
+	git := staticMockGit(nil, fmt.Errorf("not found"))
 
-	_, err := ResolveTagSHA("v1.0.0")
+	_, err := git.ResolveTagSHA("v1.0.0")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestFetchTags(t *testing.T) {
-	restore := mockRunner([]byte(""), nil)
-	defer restore()
+	git := staticMockGit([]byte(""), nil)
 
-	if err := FetchTags(); err != nil {
+	if err := git.FetchTags(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestFetchTagsError(t *testing.T) {
-	restore := mockRunner(nil, fmt.Errorf("fetch error"))
-	defer restore()
+	git := staticMockGit(nil, fmt.Errorf("fetch error"))
 
-	if err := FetchTags(); err == nil {
+	if err := git.FetchTags(); err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestGetRemoteURL(t *testing.T) {
-	restore := mockRunner([]byte("https://github.com/owner/repo.git\n"), nil)
-	defer restore()
+	git := staticMockGit([]byte("https://github.com/owner/repo.git\n"), nil)
 
-	url, err := GetRemoteURL()
+	url, err := git.GetRemoteURL()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -183,49 +188,44 @@ func TestGetRemoteURL(t *testing.T) {
 }
 
 func TestGetRemoteURLError(t *testing.T) {
-	restore := mockRunner(nil, fmt.Errorf("no remote"))
-	defer restore()
+	git := staticMockGit(nil, fmt.Errorf("no remote"))
 
-	_, err := GetRemoteURL()
+	_, err := git.GetRemoteURL()
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestUpdateTagNew(t *testing.T) {
-	calls := []string{}
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
-		calls = append(calls, args[0])
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil // tag doesn't exist
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
-	err := UpdateTag("v1", "abc123")
+	err := tgr.UpdateTag("v1", "abc123")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestUpdateTagExisting(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte("v1\n"), nil // tag exists
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
-	err := UpdateTag("v1", "abc123")
+	err := tgr.UpdateTag("v1", "abc123")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestUpdateTagCreateError(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil
 		}
@@ -234,16 +234,15 @@ func TestUpdateTagCreateError(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
-	err := UpdateTag("v1", "abc123")
+	err := tgr.UpdateTag("v1", "abc123")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestUpdateTagPushError(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte(""), nil
 		}
@@ -252,16 +251,15 @@ func TestUpdateTagPushError(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
-	err := UpdateTag("v1", "abc123")
+	err := tgr.UpdateTag("v1", "abc123")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestRunSuccess(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
@@ -273,11 +271,10 @@ func TestRunSuccess(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
 	t.Setenv("GITHUB_WORKSPACE", "/workspace")
 
-	result, err := Run("v1.2.3", true, "token123", "")
+	result, err := tgr.Run(context.Background(), "v1.2.3", true, "token123", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -293,7 +290,7 @@ func TestRunSuccess(t *testing.T) {
 }
 
 func TestRunWithMinorTag(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
@@ -305,11 +302,10 @@ func TestRunWithMinorTag(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
 	t.Setenv("GITHUB_WORKSPACE", "/workspace")
 
-	result, err := Run("v1.2.3", false, "token123", "")
+	result, err := tgr.Run(context.Background(), "v1.2.3", false, "token123", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -322,14 +318,21 @@ func TestRunWithMinorTag(t *testing.T) {
 }
 
 func TestRunInvalidTag(t *testing.T) {
-	_, err := Run("invalid", true, "", "")
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
+		return []byte(""), nil
+	})
+
+	_, err := tgr.Run(context.Background(), "invalid", true, "", "")
 	if err == nil {
 		t.Fatal("expected error for invalid tag")
+	}
+	if !errors.Is(err, ErrInvalidTag) {
+		t.Errorf("expected ErrInvalidTag, got: %v", err)
 	}
 }
 
 func TestRunFetchError(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "fetch" {
 			return nil, fmt.Errorf("fetch error")
 		}
@@ -338,18 +341,17 @@ func TestRunFetchError(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
 	t.Setenv("GITHUB_WORKSPACE", "/workspace")
 
-	_, err := Run("v1.0.0", true, "token", "")
+	_, err := tgr.Run(context.Background(), "v1.0.0", true, "token", "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestRunResolveSHAError(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return nil, fmt.Errorf("not found")
 		}
@@ -358,63 +360,63 @@ func TestRunResolveSHAError(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
 	t.Setenv("GITHUB_WORKSPACE", "/workspace")
 
-	_, err := Run("v1.0.0", true, "token", "")
+	_, err := tgr.Run(context.Background(), "v1.0.0", true, "token", "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestConfigureTokenAuthHTTPS(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "remote" && args[1] == "get-url" {
 			return []byte("https://github.com/owner/repo.git\n"), nil
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
-	err := ConfigureAuth("mytoken", "")
+	err := tgr.ConfigureAuth("mytoken", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestConfigureTokenAuthSSH(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "remote" && args[1] == "get-url" {
 			return []byte("git@github.com:owner/repo.git\n"), nil
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
-	err := ConfigureAuth("mytoken", "")
+	err := tgr.ConfigureAuth("mytoken", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestConfigureAuthNoCredentials(t *testing.T) {
-	err := ConfigureAuth("", "")
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
+		return []byte(""), nil
+	})
+
+	err := tgr.ConfigureAuth("", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestConfigureTokenAuthNonGitHub(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "remote" && args[1] == "get-url" {
 			return []byte("https://gitlab.com/owner/repo.git\n"), nil
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
-	err := ConfigureAuth("mytoken", "")
+	err := tgr.ConfigureAuth("mytoken", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -423,29 +425,32 @@ func TestConfigureTokenAuthNonGitHub(t *testing.T) {
 func TestConfigureSSHAuth(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
-	err := ConfigureAuth("", "fake-ssh-key-content")
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
+		return []byte(""), nil
+	})
+
+	err := tgr.ConfigureAuth("", "fake-ssh-key-content")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestConfigureTokenAuthRemoteError(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "remote" && args[1] == "get-url" {
 			return nil, fmt.Errorf("no remote")
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
-	err := ConfigureAuth("mytoken", "")
+	err := tgr.ConfigureAuth("mytoken", "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestUpdateTagDeleteLocalError(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte("v1\n"), nil
 		}
@@ -454,16 +459,15 @@ func TestUpdateTagDeleteLocalError(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
-	err := UpdateTag("v1", "abc123")
+	err := tgr.UpdateTag("v1", "abc123")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestRunUpdateMajorTagError(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
@@ -478,30 +482,31 @@ func TestRunUpdateMajorTagError(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
 	t.Setenv("GITHUB_WORKSPACE", "/workspace")
 
-	_, err := Run("v1.0.0", true, "token", "")
+	_, err := tgr.Run(context.Background(), "v1.0.0", true, "token", "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestRunAuthError(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "remote" && args[1] == "get-url" {
 			return nil, fmt.Errorf("no remote")
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
 	t.Setenv("GITHUB_WORKSPACE", "/workspace")
 
-	_, err := Run("v1.0.0", true, "token", "")
+	_, err := tgr.Run(context.Background(), "v1.0.0", true, "token", "")
 	if err == nil {
 		t.Fatal("expected error")
+	}
+	if !errors.Is(err, ErrAuthFailed) {
+		t.Errorf("expected ErrAuthFailed, got: %v", err)
 	}
 }
 
@@ -574,7 +579,7 @@ func TestExtractRepoPathNoSplit(t *testing.T) {
 
 func TestUpdateTagDeleteRemoteErrorContinues(t *testing.T) {
 	// When tag exists, delete local succeeds, delete remote fails (should continue)
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
 			return []byte("v1\n"), nil
 		}
@@ -586,9 +591,8 @@ func TestUpdateTagDeleteRemoteErrorContinues(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
-	err := UpdateTag("v1", "abc123")
+	err := tgr.UpdateTag("v1", "abc123")
 	if err != nil {
 		t.Fatalf("expected success even when remote delete fails, got: %v", err)
 	}
@@ -596,7 +600,7 @@ func TestUpdateTagDeleteRemoteErrorContinues(t *testing.T) {
 
 func TestRunMinorTagUpdateError(t *testing.T) {
 	callCount := 0
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
@@ -616,18 +620,17 @@ func TestRunMinorTagUpdateError(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
 	t.Setenv("GITHUB_WORKSPACE", "/workspace")
 
-	_, err := Run("v1.2.3", false, "token", "")
+	_, err := tgr.Run(context.Background(), "v1.2.3", false, "token", "")
 	if err == nil {
 		t.Fatal("expected error for minor tag failure")
 	}
 }
 
 func TestRunDefaultWorkspace(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
@@ -639,12 +642,11 @@ func TestRunDefaultWorkspace(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
 	// No GITHUB_WORKSPACE set - should use default
 	t.Setenv("GITHUB_WORKSPACE", "")
 
-	result, err := Run("v1.0.0", true, "token", "")
+	result, err := tgr.Run(context.Background(), "v1.0.0", true, "token", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -654,7 +656,7 @@ func TestRunDefaultWorkspace(t *testing.T) {
 }
 
 func TestRunSafeDirectoryError(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "config" {
 			return nil, fmt.Errorf("config error")
 		}
@@ -669,12 +671,11 @@ func TestRunSafeDirectoryError(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
 	t.Setenv("GITHUB_WORKSPACE", "/workspace")
 
 	// Should still succeed - safe directory is just a warning
-	result, err := Run("v1.0.0", true, "token", "")
+	result, err := tgr.Run(context.Background(), "v1.0.0", true, "token", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -684,7 +685,7 @@ func TestRunSafeDirectoryError(t *testing.T) {
 }
 
 func TestRunWithSSHKey(t *testing.T) {
-	restore := mockRunnerFunc(func(args ...string) ([]byte, error) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
@@ -693,12 +694,11 @@ func TestRunWithSSHKey(t *testing.T) {
 		}
 		return []byte(""), nil
 	})
-	defer restore()
 
 	t.Setenv("GITHUB_WORKSPACE", "/workspace")
 	t.Setenv("HOME", t.TempDir())
 
-	result, err := Run("v2.0.0", true, "", "fake-ssh-key")
+	result, err := tgr.Run(context.Background(), "v2.0.0", true, "", "fake-ssh-key")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -724,11 +724,11 @@ func TestValidSHAPattern(t *testing.T) {
 		input string
 		valid bool
 	}{
-		{"abc123def456abc123def456abc123def456abc1", true},   // 40 hex (SHA-1)
+		{"abc123def456abc123def456abc123def456abc1", true},                         // 40 hex (SHA-1)
 		{"abc123def456abc123def456abc123def456abc1aabbccdd00112233aabbccdd", true}, // 64 hex (SHA-256)
 		{"not-a-sha", false},
 		{"ABC123DEF456ABC123DEF456ABC123DEF456ABC1", false}, // uppercase
-		{"abc123", false},  // too short
+		{"abc123", false}, // too short
 		{"", false},
 	}
 	for _, tt := range tests {
@@ -737,5 +737,150 @@ func TestValidSHAPattern(t *testing.T) {
 				t.Errorf("validSHAPattern(%q) = %v, want %v", tt.input, !tt.valid, tt.valid)
 			}
 		})
+	}
+}
+
+func TestRunContextCancelled(t *testing.T) {
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
+		if args[0] == "remote" {
+			return []byte("https://github.com/owner/repo.git\n"), nil
+		}
+		return []byte(""), nil
+	})
+
+	t.Setenv("GITHUB_WORKSPACE", "/workspace")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := tgr.Run(ctx, "v1.0.0", true, "token", "")
+	if err == nil {
+		t.Fatal("expected error for cancelled context")
+	}
+}
+
+func TestNewGitAndDefaultGit(t *testing.T) {
+	// Test NewGit with custom runner
+	mock := &MockRunner{Fn: func(args ...string) ([]byte, error) {
+		return []byte("ok"), nil
+	}}
+	git := NewGit(mock)
+	if git == nil {
+		t.Fatal("expected non-nil Git")
+	}
+
+	// Test DefaultGit creates ExecRunner
+	defaultGit := DefaultGit()
+	if defaultGit == nil {
+		t.Fatal("expected non-nil default Git")
+	}
+}
+
+func TestDefaultTagger(t *testing.T) {
+	tgr := DefaultTagger()
+	if tgr == nil {
+		t.Fatal("expected non-nil default Tagger")
+	}
+}
+
+func TestDeleteLocalTag(t *testing.T) {
+	git := staticMockGit([]byte(""), nil)
+	if err := git.DeleteLocalTag("v1"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDeleteLocalTagError(t *testing.T) {
+	git := staticMockGit(nil, fmt.Errorf("delete error"))
+	err := git.DeleteLocalTag("v1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestDeleteRemoteTag(t *testing.T) {
+	git := staticMockGit([]byte(""), nil)
+	if err := git.DeleteRemoteTag("v1"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDeleteRemoteTagError(t *testing.T) {
+	git := staticMockGit(nil, fmt.Errorf("push error"))
+	err := git.DeleteRemoteTag("v1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestCreateTag(t *testing.T) {
+	git := staticMockGit([]byte(""), nil)
+	if err := git.CreateTag("v1", "abc123"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCreateTagError(t *testing.T) {
+	git := staticMockGit(nil, fmt.Errorf("tag error"))
+	err := git.CreateTag("v1", "abc123")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestPushTag(t *testing.T) {
+	git := staticMockGit([]byte(""), nil)
+	if err := git.PushTag("v1"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPushTagError(t *testing.T) {
+	git := staticMockGit(nil, fmt.Errorf("push error"))
+	err := git.PushTag("v1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestSetRemoteURL(t *testing.T) {
+	git := staticMockGit([]byte(""), nil)
+	if err := git.SetRemoteURL("https://example.com"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSetRemoteURLError(t *testing.T) {
+	git := staticMockGit(nil, fmt.Errorf("set-url error"))
+	err := git.SetRemoteURL("https://example.com")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestConfigureSafeDirectory(t *testing.T) {
+	git := staticMockGit([]byte(""), nil)
+	if err := git.ConfigureSafeDirectory("/workspace"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestConfigureSafeDirectoryError(t *testing.T) {
+	git := staticMockGit(nil, fmt.Errorf("config error"))
+	err := git.ConfigureSafeDirectory("/workspace")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestResolveWorkspace(t *testing.T) {
+	t.Setenv("GITHUB_WORKSPACE", "/custom/workspace")
+	if ws := resolveWorkspace(); ws != "/custom/workspace" {
+		t.Errorf("expected /custom/workspace, got %s", ws)
+	}
+
+	t.Setenv("GITHUB_WORKSPACE", "")
+	if ws := resolveWorkspace(); ws != defaultGitHubWorkspace {
+		t.Errorf("expected %s, got %s", defaultGitHubWorkspace, ws)
 	}
 }

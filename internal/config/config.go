@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 // Config holds all configuration for the major tag action.
 type Config struct {
@@ -18,6 +21,14 @@ func Load() *Config {
 		SSHKey:      os.Getenv("INPUT_SSH_KEY"),
 		MajorOnly:   getEnvDefault("INPUT_MAJOR_ONLY", "true") == "true",
 	}
+}
+
+// Validate checks that all required configuration fields are present.
+func (c *Config) Validate() error {
+	if c.Tag == "" {
+		return fmt.Errorf("input 'tag' is required")
+	}
+	return nil
 }
 
 func getEnvDefault(key, defaultVal string) string {

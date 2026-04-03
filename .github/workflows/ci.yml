@@ -2,6 +2,9 @@ name: Continuous Integration
 
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   push:
     branches:
       - main
@@ -11,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   unit-tests:

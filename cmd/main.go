@@ -28,17 +28,17 @@ func main() {
 		close(sigCh)
 	}()
 
-	if err := run(ctx); err != nil {
+	if err := run(ctx, tagger.DefaultTagger()); err != nil {
 		output.LogError(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context) error {
+func run(ctx context.Context, t *tagger.Tagger) error {
 	cfg := config.Load()
 
-	if cfg.Tag == "" {
-		return fmt.Errorf("input 'tag' is required")
+	if err := cfg.Validate(); err != nil {
+		return err
 	}
 
 	output.LogInfo("Starting major tag update...")
@@ -49,7 +49,7 @@ func run(ctx context.Context) error {
 	default:
 	}
 
-	result, err := tagger.Run(cfg.Tag, cfg.MajorOnly, cfg.GitHubToken, cfg.SSHKey)
+	result, err := t.Run(ctx, cfg.Tag, cfg.MajorOnly, cfg.GitHubToken, cfg.SSHKey)
 	if err != nil {
 		return fmt.Errorf("failed to update major tag: %w", err)
 	}
@@ -65,7 +65,7 @@ func run(ctx context.Context) error {
 	}
 	for _, o := range outputs {
 		if err := output.SetOutput(o.name, o.value); err != nil {
-			output.LogWarning(fmt.Sprintf("Failed to set %s output: %v", o.name, err))
+			output.LogWarning("Failed to set " + o.name + " output: " + err.Error())
 		}
 	}
 

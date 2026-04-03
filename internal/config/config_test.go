@@ -52,3 +52,17 @@ func TestLoadDefaults(t *testing.T) {
 		t.Error("expected MajorOnly default to be true")
 	}
 }
+
+func TestValidateSuccess(t *testing.T) {
+	cfg := &Config{Tag: "v1.0.0"}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateEmptyTag(t *testing.T) {
+	cfg := &Config{Tag: ""}
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected error for empty tag")
+	}
+}

@@ -10,19 +10,32 @@ import (
 	"github.com/somaz94/major-tag-action/internal/tagger"
 )
 
+// mockRunner implements tagger.GitRunner for testing.
+type mockRunner struct {
+	fn func(args ...string) ([]byte, error)
+}
+
+func (m *mockRunner) Run(args ...string) ([]byte, error) {
+	return m.fn(args...)
+}
+
+func newTestTagger(fn func(args ...string) ([]byte, error)) *tagger.Tagger {
+	return tagger.NewTagger(tagger.NewGit(&mockRunner{fn: fn}))
+}
+
 func TestRunEmptyTag(t *testing.T) {
 	t.Setenv("INPUT_TAG", "")
 
 	ctx := context.Background()
-	err := run(ctx)
+	tgr := tagger.DefaultTagger()
+	err := run(ctx, tgr)
 	if err == nil {
 		t.Fatal("expected error for empty tag")
 	}
 }
 
 func TestRunSuccess(t *testing.T) {
-	original := tagger.RunCommand
-	tagger.RunCommand = func(args ...string) ([]byte, error) {
+	tgr := newTestTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
@@ -33,8 +46,7 @@ func TestRunSuccess(t *testing.T) {
 			return []byte("https://github.com/owner/repo.git\n"), nil
 		}
 		return []byte(""), nil
-	}
-	defer func() { tagger.RunCommand = original }()
+	})
 
 	tmpDir := t.TempDir()
 	t.Setenv("INPUT_TAG", "v1.2.3")
@@ -44,21 +56,19 @@ func TestRunSuccess(t *testing.T) {
 	t.Setenv("GITHUB_WORKSPACE", tmpDir)
 
 	ctx := context.Background()
-	err := run(ctx)
+	err := run(ctx, tgr)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestRunFailure(t *testing.T) {
-	original := tagger.RunCommand
-	tagger.RunCommand = func(args ...string) ([]byte, error) {
+	tgr := newTestTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "remote" && args[1] == "get-url" {
 			return nil, fmt.Errorf("no remote")
 		}
 		return []byte(""), nil
-	}
-	defer func() { tagger.RunCommand = original }()
+	})
 
 	t.Setenv("INPUT_TAG", "v1.0.0")
 	t.Setenv("INPUT_MAJOR_ONLY", "true")
@@ -67,15 +77,14 @@ func TestRunFailure(t *testing.T) {
 	t.Setenv("GITHUB_WORKSPACE", t.TempDir())
 
 	ctx := context.Background()
-	err := run(ctx)
+	err := run(ctx, tgr)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestRunWithGitHubOutput(t *testing.T) {
-	original := tagger.RunCommand
-	tagger.RunCommand = func(args ...string) ([]byte, error) {
+	tgr := newTestTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
@@ -86,8 +95,7 @@ func TestRunWithGitHubOutput(t *testing.T) {
 			return []byte("https://github.com/owner/repo.git\n"), nil
 		}
 		return []byte(""), nil
-	}
-	defer func() { tagger.RunCommand = original }()
+	})
 
 	tmpDir := t.TempDir()
 	outputFile := filepath.Join(tmpDir, "github_output")
@@ -101,7 +109,7 @@ func TestRunWithGitHubOutput(t *testing.T) {
 	t.Setenv("GITHUB_OUTPUT", outputFile)
 
 	ctx := context.Background()
-	err := run(ctx)
+	err := run(ctx, tgr)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,7 +126,8 @@ func TestRunCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err := run(ctx)
+	tgr := tagger.DefaultTagger()
+	err := run(ctx, tgr)
 	if err == nil {
 		t.Fatal("expected error for cancelled context")
 	}

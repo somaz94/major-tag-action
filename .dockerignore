@@ -9,12 +9,17 @@
 # Documentation
 README.md
 CHANGELOG.md
+CONTRIBUTORS.md
+RELEASE.md
+CLAUDE.md
 LICENSE
 CODEOWNERS
+docs
 
 # Development
 Makefile
 cliff.toml
+coverage.out
 *.out
 
 # IDE

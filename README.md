@@ -147,8 +147,9 @@ GitHub Actions users reference actions by major version (e.g., `uses: owner/acti
 │   │   ├── output.go        # GitHub Actions output helpers
 │   │   └── output_test.go
 │   └── tagger/
-│       ├── git.go           # Git operations
-│       ├── tagger.go        # Tag update logic
+│       ├── errors.go        # Sentinel errors
+│       ├── git.go           # GitRunner interface and git operations
+│       ├── tagger.go        # Tagger struct and tag update logic
 │       └── tagger_test.go
 ├── action.yml
 ├── Dockerfile
