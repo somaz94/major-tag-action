@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.0.3](https://github.com/somaz94/major-tag-action/compare/v1.0.2...v1.0.3) (2026-04-03)
+
+### Code Refactoring
+
+- interface-based dependency injection and code quality improvements ([c067712](https://github.com/somaz94/major-tag-action/commit/c067712ed4e042f0f6b042d4ac496d6b97e5d7fb))
+
+### Documentation
+
+- remove duplicate rules covered by global CLAUDE.md ([9e061e7](https://github.com/somaz94/major-tag-action/commit/9e061e76e75a9b5cdd796c45a40fbdf55385dd01))
+
+### Chores
+
+- remove duplicate rules from CLAUDE.md (moved to global) ([9517eaa](https://github.com/somaz94/major-tag-action/commit/9517eaa7b4adca302c9aab44e50ae4ff2fbb8ff8))
+- add git config protection to CLAUDE.md ([347083f](https://github.com/somaz94/major-tag-action/commit/347083f88a8fffe2baf5bfe9617865374d774e4f))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v1.0.2](https://github.com/somaz94/major-tag-action/compare/v1.0.1...v1.0.2) (2026-03-25)
 
 ### Bug Fixes
