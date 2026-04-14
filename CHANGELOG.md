@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Chores
 
+- **deps:** bump softprops/action-gh-release from 2 to 3 ([b991b82](https://github.com/somaz94/major-tag-action/commit/b991b82062cf42ee3b091808f063532d7b8d25e9))
 - **deps:** bump actions/github-script from 8 to 9 ([90f6753](https://github.com/somaz94/major-tag-action/commit/90f6753606801dd5987df72fdead72c7720c19e4))
 - **deps:** bump dependabot/fetch-metadata from 2 to 3 ([9f6962e](https://github.com/somaz94/major-tag-action/commit/9f6962e13f39a82d362c2edc4f75537ca3c72b4b))
 
