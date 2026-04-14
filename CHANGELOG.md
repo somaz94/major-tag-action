@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased (2026-04-14)
+
+### Chores
+
+- **deps:** bump dependabot/fetch-metadata from 2 to 3 ([9f6962e](https://github.com/somaz94/major-tag-action/commit/9f6962e13f39a82d362c2edc4f75537ca3c72b4b))
+
+<br/>
+
 ## [v1.0.3](https://github.com/somaz94/major-tag-action/compare/v1.0.2...v1.0.3) (2026-04-03)
 
 ### Code Refactoring
