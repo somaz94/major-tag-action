@@ -17,78 +17,38 @@ permissions:
   contents: read
 
 jobs:
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.26'
-
-      - name: Run Go tests with coverage
-        run: go test ./... -v -cover -coverprofile=coverage.out
-
-      - name: Display coverage summary
-        run: go tool cover -func=coverage.out
-
-      - name: Check coverage threshold
-        run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
-          echo "Total coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 85" | bc -l) )); then
-            echo "FAIL: Coverage ${COVERAGE}% is below 85%"
-            exit 1
-          fi
-          echo "PASS: Coverage ${COVERAGE}% meets threshold"
-
-  build-and-push-docker:
-    name: Build and Push Docker
-    needs: unit-tests
+  ci-prelude:
+    name: Unit Tests + Docker Build
     runs-on: ubuntu-latest
     services:
       registry:
         image: registry:2
         ports:
           - 5001:5000
-    env:
-      TEST_TAG: localhost:5001/actions/major-tag-action:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Configure Git Safe Directory
-        run: git config --global --add safe.directory ${{ github.workspace }}
-
-      - name: Setup Docker BuildX
-        uses: docker/setup-buildx-action@v4
+      - name: Go unit tests + Docker build and push to local registry
+        id: ci
+        uses: somaz94/go-docker-action-ci-action@v1
         with:
-          install: true
-          driver-opts: network=host
-
-      - name: Build the Container
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          tags: ${{ env.TEST_TAG }}
+          coverage_threshold: '85'
+          manage_registry: 'false'
 
       - name: Run the Container (dry-run)
         run: |
           docker run \
             --env INPUT_TAG="v1.0.0" \
             --env INPUT_MAJOR_ONLY="true" \
-            --rm ${{ env.TEST_TAG }} 2>&1 || true
+            --rm "${{ steps.ci.outputs.image_ref }}" 2>&1 || true
 
   test-action:
     name: GitHub Actions Test
     runs-on: ubuntu-latest
-    needs: build-and-push-docker
+    needs: ci-prelude
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -109,8 +69,7 @@ jobs:
     name: CI Result
     if: always()
     needs:
-      - unit-tests
-      - build-and-push-docker
+      - ci-prelude
       - test-action
     runs-on: ubuntu-latest
     steps:
