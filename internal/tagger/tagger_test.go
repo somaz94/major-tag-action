@@ -5,9 +5,27 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// TestMain isolates git's global/system config into throwaway temp files. The
+// tests here drive ConfigureSafeDirectory through a mock runner, so they do not
+// touch real git today; this guard keeps any future real-runner test from
+// leaking `safe.directory` entries into the developer's ~/.gitconfig.
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "major-tag-action-gitconfig")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create temp gitconfig dir: %v\n", err)
+		os.Exit(1)
+	}
+	os.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(dir, "config"))
+	os.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	code := m.Run()
+	_ = os.RemoveAll(dir)
+	os.Exit(code)
+}
 
 // MockRunner implements GitRunner for testing.
 type MockRunner struct {
