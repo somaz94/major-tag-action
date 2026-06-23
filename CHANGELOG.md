@@ -2,13 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-04-14)
+## Unreleased (2026-06-23)
+
+### Tests
+
+- isolate global git config in tests as a regression guard ([1d881d0](https://github.com/somaz94/major-tag-action/commit/1d881d00b3f85be07c08eff0558e68ad6fcba34a))
+
+### Continuous Integration
+
+- add DCO check via shared reusable workflow ([458b605](https://github.com/somaz94/major-tag-action/commit/458b605a857473db59eaa041f16a9f0cc6b85109))
+- add concurrency guards to recurring workflows ([661e730](https://github.com/somaz94/major-tag-action/commit/661e730a949af93bc3c180373bd982fc7603b1e2))
+- use go-docker-action-ci-action@v1 (replace inline prelude) ([34829b6](https://github.com/somaz94/major-tag-action/commit/34829b6ec87749d74e0939928093f348390094ef))
 
 ### Chores
 
+- **deps:** bump actions/checkout from 6 to 7 (#6) ([#6](https://github.com/somaz94/major-tag-action/pull/6)) ([69e8a3a](https://github.com/somaz94/major-tag-action/commit/69e8a3a48591701745588fa2213acb11eeff3ff5))
+- **deps:** bump alpine from 3.23 to 3.24 in the docker-minor group (#4) ([#4](https://github.com/somaz94/major-tag-action/pull/4)) ([80fc695](https://github.com/somaz94/major-tag-action/commit/80fc695d1a6cd3d50ec8c60badadb393d0f471b0))
 - **deps:** bump softprops/action-gh-release from 2 to 3 ([b991b82](https://github.com/somaz94/major-tag-action/commit/b991b82062cf42ee3b091808f063532d7b8d25e9))
 - **deps:** bump actions/github-script from 8 to 9 ([90f6753](https://github.com/somaz94/major-tag-action/commit/90f6753606801dd5987df72fdead72c7720c19e4))
 - **deps:** bump dependabot/fetch-metadata from 2 to 3 ([9f6962e](https://github.com/somaz94/major-tag-action/commit/9f6962e13f39a82d362c2edc4f75537ca3c72b4b))
+
+### Contributors
+
+- somaz
 
 <br/>
 
