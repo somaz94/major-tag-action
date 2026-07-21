@@ -2,7 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-07-21)
+## [v1.0.4](https://github.com/somaz94/major-tag-action/compare/v1.0.3...v1.0.4) (2026-07-21)
+
+### Bug Fixes
+
+- **tagger:** preserve auth error unwrap chain with %w instead of %v ([a0a529b](https://github.com/somaz94/major-tag-action/commit/a0a529b712c29c4ca752640308b0de7a28b36292))
+
+### Code Refactoring
+
+- **tagger:** propagate context through GitRunner and dedup git command wrappers ([a4d9709](https://github.com/somaz94/major-tag-action/commit/a4d9709d046433df20d4fca5696368e7d40c644d))
 
 ### Tests
 
