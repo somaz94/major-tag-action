@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-06-23)
+## Unreleased (2026-07-21)
 
 ### Tests
 
@@ -10,12 +10,21 @@ All notable changes to this project will be documented in this file.
 
 ### Continuous Integration
 
+- remove DCO workflow ([acdb42f](https://github.com/somaz94/major-tag-action/commit/acdb42ff861d060d0b5ffb3d6493e367cead6ed1))
+- adopt semantic-pr, labels, lock-threads, PR size, and auto-assign reusables ([b484a2a](https://github.com/somaz94/major-tag-action/commit/b484a2a585bce092fe99d7173b4e3904a5489776))
+- use reusable stale-issues workflow ([6781b1f](https://github.com/somaz94/major-tag-action/commit/6781b1f7cf9816a02c977c63967d9e149e22d4bd))
+- use reusable issue-greeting workflow ([7bc649a](https://github.com/somaz94/major-tag-action/commit/7bc649a87669e1856791020f36c8f400021bd772))
+- use reusable dependabot-auto-merge workflow ([76f4a0f](https://github.com/somaz94/major-tag-action/commit/76f4a0f3d4a5bb3a4acc2d1ba833437218313966))
+- use reusable contributors workflow ([8108933](https://github.com/somaz94/major-tag-action/commit/8108933e98b878b9923ad54c18829fa7919191fe))
+- add ok-to-test workflow stub ([97fd4b8](https://github.com/somaz94/major-tag-action/commit/97fd4b8c9463135c56d381efadb552821a534557))
+- add PR welcome workflow stub ([43871c9](https://github.com/somaz94/major-tag-action/commit/43871c94f61207b8114bf0c35b1773e90105c2a3))
 - add DCO check via shared reusable workflow ([458b605](https://github.com/somaz94/major-tag-action/commit/458b605a857473db59eaa041f16a9f0cc6b85109))
 - add concurrency guards to recurring workflows ([661e730](https://github.com/somaz94/major-tag-action/commit/661e730a949af93bc3c180373bd982fc7603b1e2))
 - use go-docker-action-ci-action@v1 (replace inline prelude) ([34829b6](https://github.com/somaz94/major-tag-action/commit/34829b6ec87749d74e0939928093f348390094ef))
 
 ### Chores
 
+- **deps:** bump actions/setup-go from 6 to 7 (#7) ([#7](https://github.com/somaz94/major-tag-action/pull/7)) ([b74582f](https://github.com/somaz94/major-tag-action/commit/b74582f8c0a3281d545612103cf1900449ada501))
 - **deps:** bump actions/checkout from 6 to 7 (#6) ([#6](https://github.com/somaz94/major-tag-action/pull/6)) ([69e8a3a](https://github.com/somaz94/major-tag-action/commit/69e8a3a48591701745588fa2213acb11eeff3ff5))
 - **deps:** bump alpine from 3.23 to 3.24 in the docker-minor group (#4) ([#4](https://github.com/somaz94/major-tag-action/pull/4)) ([80fc695](https://github.com/somaz94/major-tag-action/commit/80fc695d1a6cd3d50ec8c60badadb393d0f471b0))
 - **deps:** bump softprops/action-gh-release from 2 to 3 ([b991b82](https://github.com/somaz94/major-tag-action/commit/b991b82062cf42ee3b091808f063532d7b8d25e9))
