@@ -15,7 +15,7 @@ type mockRunner struct {
 	fn func(args ...string) ([]byte, error)
 }
 
-func (m *mockRunner) Run(args ...string) ([]byte, error) {
+func (m *mockRunner) Run(_ context.Context, args ...string) ([]byte, error) {
 	return m.fn(args...)
 }
 

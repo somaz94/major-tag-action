@@ -85,12 +85,12 @@ func sshDir() (string, error) {
 }
 
 // ConfigureAuth sets up git authentication using token or SSH key.
-func (t *Tagger) ConfigureAuth(token, sshKey string) error {
+func (t *Tagger) ConfigureAuth(ctx context.Context, token, sshKey string) error {
 	if sshKey != "" {
 		return configureSSHAuth(sshKey)
 	}
 	if token != "" {
-		return t.configureTokenAuth(token)
+		return t.configureTokenAuth(ctx, token)
 	}
 	return nil
 }
@@ -136,8 +136,8 @@ func extractRepoPath(remoteURL string) string {
 	return repoPath
 }
 
-func (t *Tagger) configureTokenAuth(token string) error {
-	remoteURL, err := t.git.GetRemoteURL()
+func (t *Tagger) configureTokenAuth(ctx context.Context, token string) error {
+	remoteURL, err := t.git.GetRemoteURL(ctx)
 	if err != nil {
 		return err
 	}
@@ -148,27 +148,27 @@ func (t *Tagger) configureTokenAuth(token string) error {
 
 	repoPath := extractRepoPath(remoteURL)
 	newURL := fmt.Sprintf(tokenAuthURLFormat, token, repoPath)
-	return t.git.SetRemoteURL(newURL)
+	return t.git.SetRemoteURL(ctx, newURL)
 }
 
 // UpdateTag deletes the old tag (if exists) and creates a new one pointing to commitSHA.
-func (t *Tagger) UpdateTag(tagName, commitSHA string) error {
-	if t.git.TagExists(tagName) {
+func (t *Tagger) UpdateTag(ctx context.Context, tagName, commitSHA string) error {
+	if t.git.TagExists(ctx, tagName) {
 		output.LogInfo("Deleting existing tag '" + tagName + "'")
-		if err := t.git.DeleteLocalTag(tagName); err != nil {
+		if err := t.git.DeleteLocalTag(ctx, tagName); err != nil {
 			return err
 		}
-		if err := t.git.DeleteRemoteTag(tagName); err != nil {
+		if err := t.git.DeleteRemoteTag(ctx, tagName); err != nil {
 			output.LogWarning("Failed to delete remote tag '" + tagName + "' (may not exist): continuing")
 		}
 	}
 
 	output.LogInfo("Creating tag '" + tagName + "' pointing to " + commitSHA)
-	if err := t.git.CreateTag(tagName, commitSHA); err != nil {
+	if err := t.git.CreateTag(ctx, tagName, commitSHA); err != nil {
 		return err
 	}
 
-	return t.git.PushTag(tagName)
+	return t.git.PushTag(ctx, tagName)
 }
 
 // resolveWorkspace returns the configured or default GitHub workspace path.
@@ -191,11 +191,11 @@ func (t *Tagger) Run(ctx context.Context, tag string, majorOnly bool, token, ssh
 
 	// Configure safe directory
 	workspace := resolveWorkspace()
-	if err := t.git.ConfigureSafeDirectory(workspace); err != nil {
+	if err := t.git.ConfigureSafeDirectory(ctx, workspace); err != nil {
 		output.LogWarning("Failed to set git safe.directory: " + err.Error())
 	}
 
-	if err := t.ConfigureAuth(token, sshKey); err != nil {
+	if err := t.ConfigureAuth(ctx, token, sshKey); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrAuthFailed, err)
 	}
 
@@ -206,17 +206,17 @@ func (t *Tagger) Run(ctx context.Context, tag string, majorOnly bool, token, ssh
 	default:
 	}
 
-	if err := t.git.FetchTags(); err != nil {
+	if err := t.git.FetchTags(ctx); err != nil {
 		return nil, fmt.Errorf("failed to fetch tags: %w", err)
 	}
 
-	commitSHA, err := t.git.ResolveTagSHA(tag)
+	commitSHA, err := t.git.ResolveTagSHA(ctx, tag)
 	if err != nil {
 		return nil, err
 	}
 	output.LogInfo("Commit SHA: " + commitSHA)
 
-	if err := t.UpdateTag(majorTag, commitSHA); err != nil {
+	if err := t.UpdateTag(ctx, majorTag, commitSHA); err != nil {
 		return nil, err
 	}
 
@@ -232,7 +232,7 @@ func (t *Tagger) Run(ctx context.Context, tag string, majorOnly bool, token, ssh
 		}
 		output.LogInfo("Minor version tag: " + minorTag)
 
-		if err := t.UpdateTag(minorTag, commitSHA); err != nil {
+		if err := t.UpdateTag(ctx, minorTag, commitSHA); err != nil {
 			return nil, err
 		}
 		result.MinorTag = minorTag

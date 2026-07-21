@@ -1,6 +1,7 @@
 package tagger
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -12,16 +13,21 @@ var validSHAPattern = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
 
 // GitRunner defines the interface for executing git commands.
 type GitRunner interface {
-	Run(args ...string) ([]byte, error)
+	Run(ctx context.Context, args ...string) ([]byte, error)
 }
 
 // ExecRunner is the default GitRunner implementation using os/exec.
 type ExecRunner struct{}
 
 // Run executes a git command and returns the combined output.
-func (r *ExecRunner) Run(args ...string) ([]byte, error) {
-	cmd := exec.Command("git", args...)
-	return cmd.CombinedOutput()
+func (r *ExecRunner) Run(ctx context.Context, args ...string) ([]byte, error) {
+	out, err := exec.CommandContext(ctx, "git", args...).CombinedOutput()
+	// Surface the cancellation/timeout cause instead of the opaque
+	// "signal: killed" that CombinedOutput reports when ctx fires.
+	if err != nil && ctx.Err() != nil {
+		return out, ctx.Err()
+	}
+	return out, err
 }
 
 // Git wraps git operations with a pluggable runner.
@@ -39,25 +45,38 @@ func DefaultGit() *Git {
 	return NewGit(&ExecRunner{})
 }
 
+// run executes a git command through the runner, trims the trailing
+// whitespace from its output, and wraps any error with a human-readable
+// description ("failed to <desc>: <cause>").
+func (g *Git) run(ctx context.Context, desc string, args ...string) (string, error) {
+	out, err := g.runner.Run(ctx, args...)
+	if err != nil {
+		return "", fmt.Errorf("failed to %s: %w", desc, err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 // ConfigureSafeDirectory adds the workspace as a git safe directory.
-func (g *Git) ConfigureSafeDirectory(dir string) error {
-	_, err := g.runner.Run("config", "--global", "--add", "safe.directory", dir)
+func (g *Git) ConfigureSafeDirectory(ctx context.Context, dir string) error {
+	// Return the raw error unwrapped: the caller logs it as a warning and
+	// double-prefixing ("failed to ...: failed to ...") reads poorly there.
+	_, err := g.runner.Run(ctx, "config", "--global", "--add", "safe.directory", dir)
 	return err
 }
 
 // FetchTags fetches all tags from origin.
-func (g *Git) FetchTags() error {
-	_, err := g.runner.Run("fetch", "--tags", "--force")
+func (g *Git) FetchTags(ctx context.Context) error {
+	// Return the raw error: the caller wraps it with "failed to fetch tags".
+	_, err := g.runner.Run(ctx, "fetch", "--tags", "--force")
 	return err
 }
 
 // ResolveTagSHA returns the commit SHA for a given tag.
-func (g *Git) ResolveTagSHA(tag string) (string, error) {
-	out, err := g.runner.Run("rev-list", "-n", "1", tag)
+func (g *Git) ResolveTagSHA(ctx context.Context, tag string) (string, error) {
+	sha, err := g.run(ctx, fmt.Sprintf("resolve SHA for tag %q", tag), "rev-list", "-n", "1", tag)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve SHA for tag %q: %w", tag, err)
+		return "", err
 	}
-	sha := strings.TrimSpace(string(out))
 	if !validSHAPattern.MatchString(sha) {
 		return "", fmt.Errorf("%w for tag %q: %q", ErrInvalidSHA, tag, sha)
 	}
@@ -65,64 +84,45 @@ func (g *Git) ResolveTagSHA(tag string) (string, error) {
 }
 
 // TagExists checks if a tag exists locally.
-func (g *Git) TagExists(tag string) bool {
-	out, err := g.runner.Run("tag", "-l", tag)
+func (g *Git) TagExists(ctx context.Context, tag string) bool {
+	out, err := g.run(ctx, fmt.Sprintf("list tag %q", tag), "tag", "-l", tag)
 	if err != nil {
 		return false
 	}
-	return strings.TrimSpace(string(out)) == tag
+	return out == tag
 }
 
 // DeleteLocalTag deletes a local tag.
-func (g *Git) DeleteLocalTag(tag string) error {
-	_, err := g.runner.Run("tag", "-d", tag)
-	if err != nil {
-		return fmt.Errorf("failed to delete local tag %q: %w", tag, err)
-	}
-	return nil
+func (g *Git) DeleteLocalTag(ctx context.Context, tag string) error {
+	_, err := g.run(ctx, fmt.Sprintf("delete local tag %q", tag), "tag", "-d", tag)
+	return err
 }
 
 // DeleteRemoteTag deletes a remote tag.
-func (g *Git) DeleteRemoteTag(tag string) error {
-	_, err := g.runner.Run("push", "origin", ":refs/tags/"+tag)
-	if err != nil {
-		return fmt.Errorf("failed to delete remote tag %q: %w", tag, err)
-	}
-	return nil
+func (g *Git) DeleteRemoteTag(ctx context.Context, tag string) error {
+	_, err := g.run(ctx, fmt.Sprintf("delete remote tag %q", tag), "push", "origin", ":refs/tags/"+tag)
+	return err
 }
 
 // CreateTag creates a local tag pointing to a specific commit.
-func (g *Git) CreateTag(tag, commitSHA string) error {
-	_, err := g.runner.Run("tag", tag, commitSHA)
-	if err != nil {
-		return fmt.Errorf("failed to create tag %q: %w", tag, err)
-	}
-	return nil
+func (g *Git) CreateTag(ctx context.Context, tag, commitSHA string) error {
+	_, err := g.run(ctx, fmt.Sprintf("create tag %q", tag), "tag", tag, commitSHA)
+	return err
 }
 
 // PushTag pushes a tag to origin.
-func (g *Git) PushTag(tag string) error {
-	_, err := g.runner.Run("push", "origin", tag)
-	if err != nil {
-		return fmt.Errorf("failed to push tag %q: %w", tag, err)
-	}
-	return nil
+func (g *Git) PushTag(ctx context.Context, tag string) error {
+	_, err := g.run(ctx, fmt.Sprintf("push tag %q", tag), "push", "origin", tag)
+	return err
 }
 
 // GetRemoteURL returns the remote origin URL.
-func (g *Git) GetRemoteURL() (string, error) {
-	out, err := g.runner.Run("remote", "get-url", "origin")
-	if err != nil {
-		return "", fmt.Errorf("failed to get remote URL: %w", err)
-	}
-	return strings.TrimSpace(string(out)), nil
+func (g *Git) GetRemoteURL(ctx context.Context) (string, error) {
+	return g.run(ctx, "get remote URL", "remote", "get-url", "origin")
 }
 
 // SetRemoteURL updates the remote origin URL.
-func (g *Git) SetRemoteURL(url string) error {
-	_, err := g.runner.Run("remote", "set-url", "origin", url)
-	if err != nil {
-		return fmt.Errorf("failed to set remote URL: %w", err)
-	}
-	return nil
+func (g *Git) SetRemoteURL(ctx context.Context, url string) error {
+	_, err := g.run(ctx, "set remote URL", "remote", "set-url", "origin", url)
+	return err
 }
