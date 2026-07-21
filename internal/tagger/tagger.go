@@ -196,7 +196,7 @@ func (t *Tagger) Run(ctx context.Context, tag string, majorOnly bool, token, ssh
 	}
 
 	if err := t.ConfigureAuth(ctx, token, sshKey); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrAuthFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrAuthFailed, err)
 	}
 
 	// Check for cancellation before network operations
