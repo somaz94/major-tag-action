@@ -20,7 +20,8 @@ func SetOutput(name, value string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open GITHUB_OUTPUT: %w", err)
 	}
-	defer f.Close()
+	// os.File writes are unbuffered, so Close carries no pending data.
+	defer func() { _ = f.Close() }()
 
 	if strings.Contains(value, "\n") {
 		_, err = fmt.Fprintf(f, "%s<<%s\n%s\n%s\n", name, multilineDelimiter, value, multilineDelimiter)
