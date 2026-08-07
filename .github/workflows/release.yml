@@ -4,15 +4,69 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
+  # Seeds the container image for a version whose tag does not exist yet.
+  # action.yml resolves `docker://ghcr.io/...:<version>` at the moment a
+  # consumer runs the action, and it reads that from the tag being released —
+  # so on the FIRST docker:// release the image has to already be in the
+  # registry before the tag is pushed, or the tag is briefly broken. Run this
+  # once for the new version, make the package public (GitHub exposes no API
+  # for package visibility — it is a one-time click per package), then tag.
+  # Afterwards the push trigger above keeps every release self-contained.
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Publish only the container image for this version (e.g. v1.1.0). No GitHub release is created."
+        required: true
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
+  publish-image:
+    name: "Publish image"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # push to ghcr.io
+    steps:
+      - name: "Check-out"
+        uses: actions/checkout@v7
+
+      # Multi-arch, because switching action.yml from `Dockerfile` to a
+      # registry reference is what makes architecture a published property
+      # rather than something the runner decided. amd64 alone would break any
+      # consumer on an arm64 runner, and it would break at pull time with a
+      # manifest error rather than anywhere near this change.
+      - name: "Set up Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "Log in to GHCR"
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Build and push"
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ghcr.io/${{ github.repository }}:${{ inputs.image_tag || github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   build:
     name: "Release"
     runs-on: ubuntu-latest
+    # The release must not exist without the image it points at. A failed image
+    # push leaves the git tag orphaned, which is recoverable by deleting and
+    # re-tagging; a release published against a missing image is not, because
+    # consumers resolve it immediately.
+    needs: publish-image
+    if: github.event_name == 'push'
     steps:
       - name: "Check-out"
         uses: actions/checkout@v7
