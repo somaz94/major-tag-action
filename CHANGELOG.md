@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased (2026-08-07)
+
+### Performance Improvements
+
+- ship a prebuilt multi-arch image instead of building per run ([d1f73f0](https://github.com/somaz94/major-tag-action/commit/d1f73f087be74863bf31be709282aa88c1284204))
+
+### Continuous Integration
+
+- add a golangci-lint config scoped to defect-finding linters ([4363630](https://github.com/somaz94/major-tag-action/commit/43636300ee28e03fdc8ba7dd66e4762080b8fe25))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v1.0.4](https://github.com/somaz94/major-tag-action/compare/v1.0.3...v1.0.4) (2026-07-21)
 
 ### Bug Fixes
