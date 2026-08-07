@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.1.1](https://github.com/somaz94/major-tag-action/compare/v1.1.0...v1.1.1) (2026-08-07)
+
+### Bug Fixes
+
+- **tagger:** move tags with a single force push instead of delete-then-create ([0fd8b11](https://github.com/somaz94/major-tag-action/commit/0fd8b1170c6c3540ab36f3e42bc47c3dd52f695a))
+
+### Continuous Integration
+
+- restore the sliding v1 self-reference now that v1 exists ([aaa7f6b](https://github.com/somaz94/major-tag-action/commit/aaa7f6b4bd8f63f385514ce84c035fd51a31ede1))
+
+### Chores
+
+- bump the action image to v1.1.1 ([8e90deb](https://github.com/somaz94/major-tag-action/commit/8e90deb4e14cdeba783b083334a3d8fa00c29edd))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v1.1.0](https://github.com/somaz94/major-tag-action/compare/v1.0.4...v1.1.0) (2026-08-07)
 
 ### Performance Improvements
