@@ -110,16 +110,26 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Update major version tag"
-        # Pinned to an exact version rather than the sliding `v1`, because this
-        # repository is the action it is releasing. `v1` is the tag this very
-        # step produces, so referencing it makes the release depend on its own
-        # output — and when `v1` went missing from the remote (it exists for
-        # v1.0.4 and is absent now), the release could not even start: the
-        # failure was "unable to resolve action ... unable to find version v1",
-        # raised while setting the job up. An exact tag cannot get into that
-        # state. The cost is bumping this line each release, which is one line
-        # in the same commit that bumps action.yml's image tag.
-        uses: somaz94/major-tag-action@v1.1.0
+        # This repository is the action it releases, so this step consumes the
+        # very tag it produces. That is fine while `v1` exists, and it is a
+        # deadlock the moment `v1` does not: the run fails at job setup with
+        # "unable to resolve action ... unable to find version v1", and the
+        # only thing that recreates `v1` is this step.
+        #
+        # It happened once, on 2026-08-07. The smoke-test workflow ran the
+        # released action against the real `v1`; UpdateTag deleted the remote
+        # ref and the push that would have recreated it failed, so `v1` was
+        # gone and the next release could not start. Both halves are fixed —
+        # the tag now moves by a single force push, and git's own error text is
+        # no longer discarded — but the coupling itself remains by design.
+        #
+        # If it recurs, do not hand-create the tag: pin this line to the exact
+        # version being released for that one release, let it rebuild `v1`,
+        # then restore `@v1` in a follow-up commit. That is how v1.1.0 shipped.
+        # Pinning permanently would mean bumping this line on every release on
+        # top of action.yml's image tag, which already has to move because
+        # `runs.image` takes no expressions.
+        uses: somaz94/major-tag-action@v1
         with:
           tag: ${{ github.ref_name }}
           github_token: ${{ secrets.PAT_TOKEN }}
