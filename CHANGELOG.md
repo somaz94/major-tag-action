@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased (2026-08-07)
+
+### Continuous Integration
+
+- call the shared release workflow instead of duplicating it ([ec43214](https://github.com/somaz94/major-tag-action/commit/ec4321485fbec4fb894a3aca8d1e13b03a697dba))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v1.1.1](https://github.com/somaz94/major-tag-action/compare/v1.1.0...v1.1.1) (2026-08-07)
 
 ### Bug Fixes
