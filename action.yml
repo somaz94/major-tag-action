@@ -48,7 +48,7 @@ runs:
   #   2. `Dockerfile` built for whatever architecture the runner was; a
   #      registry reference resolves only to what was pushed. The image is
   #      published linux/amd64 + linux/arm64 so arm64 runners keep working.
-  image: docker://ghcr.io/somaz94/major-tag-action:v1.1.0
+  image: docker://ghcr.io/somaz94/major-tag-action:v1.1.1
   env:
     INPUT_TAG: ${{ inputs.tag }}
     INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
