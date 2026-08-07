@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -467,23 +468,6 @@ func TestConfigureTokenAuthRemoteError(t *testing.T) {
 	}
 }
 
-func TestUpdateTagDeleteLocalError(t *testing.T) {
-	tgr := newMockTagger(func(args ...string) ([]byte, error) {
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte("v1\n"), nil
-		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-d" {
-			return nil, fmt.Errorf("delete error")
-		}
-		return []byte(""), nil
-	})
-
-	err := tgr.UpdateTag(context.Background(), "v1", "abc123")
-	if err == nil {
-		t.Fatal("expected error")
-	}
-}
-
 func TestRunUpdateMajorTagError(t *testing.T) {
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
@@ -592,27 +576,6 @@ func TestExtractRepoPathNoSplit(t *testing.T) {
 	result := extractRepoPath("https://github.com")
 	if result != "https://github.com" {
 		t.Errorf("unexpected result: %s", result)
-	}
-}
-
-func TestUpdateTagDeleteRemoteErrorContinues(t *testing.T) {
-	// When tag exists, delete local succeeds, delete remote fails (should continue)
-	tgr := newMockTagger(func(args ...string) ([]byte, error) {
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte("v1\n"), nil
-		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-d" {
-			return []byte(""), nil
-		}
-		if args[0] == "push" && len(args) > 1 && args[1] == "origin" && args[2] == ":refs/tags/v1" {
-			return nil, fmt.Errorf("remote delete failed")
-		}
-		return []byte(""), nil
-	})
-
-	err := tgr.UpdateTag(context.Background(), "v1", "abc123")
-	if err != nil {
-		t.Fatalf("expected success even when remote delete fails, got: %v", err)
 	}
 }
 
@@ -801,36 +764,6 @@ func TestDefaultTagger(t *testing.T) {
 	}
 }
 
-func TestDeleteLocalTag(t *testing.T) {
-	git := staticMockGit([]byte(""), nil)
-	if err := git.DeleteLocalTag(context.Background(), "v1"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestDeleteLocalTagError(t *testing.T) {
-	git := staticMockGit(nil, fmt.Errorf("delete error"))
-	err := git.DeleteLocalTag(context.Background(), "v1")
-	if err == nil {
-		t.Fatal("expected error")
-	}
-}
-
-func TestDeleteRemoteTag(t *testing.T) {
-	git := staticMockGit([]byte(""), nil)
-	if err := git.DeleteRemoteTag(context.Background(), "v1"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestDeleteRemoteTagError(t *testing.T) {
-	git := staticMockGit(nil, fmt.Errorf("push error"))
-	err := git.DeleteRemoteTag(context.Background(), "v1")
-	if err == nil {
-		t.Fatal("expected error")
-	}
-}
-
 func TestCreateTag(t *testing.T) {
 	git := staticMockGit([]byte(""), nil)
 	if err := git.CreateTag(context.Background(), "v1", "abc123"); err != nil {
@@ -900,5 +833,90 @@ func TestResolveWorkspace(t *testing.T) {
 	t.Setenv("GITHUB_WORKSPACE", "")
 	if ws := resolveWorkspace(); ws != defaultGitHubWorkspace {
 		t.Errorf("expected %s, got %s", defaultGitHubWorkspace, ws)
+	}
+}
+
+// TestUpdateTagNeverDeletesRemoteRef is the regression guard for the incident
+// on 2026-08-07: UpdateTag deleted the remote tag, then failed on the push that
+// would have recreated it, leaving `v1` absent. Absent is far worse than stale
+// here — this action's own release workflow consumes itself as `@v1`, so a
+// missing `v1` cannot be repaired by running the action.
+func TestUpdateTagNeverDeletesRemoteRef(t *testing.T) {
+	var calls [][]string
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
+		calls = append(calls, args)
+		return []byte(""), nil
+	})
+
+	if err := tgr.UpdateTag(context.Background(), "v1", "abc123"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var pushed bool
+	for _, c := range calls {
+		joined := strings.Join(c, " ")
+		if strings.Contains(joined, ":refs/tags/v1") && strings.HasPrefix(joined, "push origin :") {
+			t.Fatalf("UpdateTag deleted the remote ref: %q", joined)
+		}
+		if c[0] == "tag" && len(c) > 1 && c[1] == "-d" {
+			t.Fatalf("UpdateTag deleted the local ref: %q", joined)
+		}
+		if c[0] == "push" {
+			pushed = true
+			if !slices.Contains(c, "--force") {
+				t.Errorf("push must be a force update, got %q", joined)
+			}
+			if !slices.Contains(c, "refs/tags/v1:refs/tags/v1") {
+				t.Errorf("push must use a fully qualified refspec, got %q", joined)
+			}
+		}
+	}
+	if !pushed {
+		t.Fatal("UpdateTag never pushed")
+	}
+}
+
+// TestCreateTagMovesExistingTag pins the `-f`: without it, re-pointing a tag
+// that already exists fails, which is the whole reason the delete came first.
+func TestCreateTagMovesExistingTag(t *testing.T) {
+	var got []string
+	git := newMockGit(func(args ...string) ([]byte, error) {
+		got = args
+		return []byte(""), nil
+	})
+
+	if err := git.CreateTag(context.Background(), "v1", "abc123"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !slices.Contains(got, "-f") {
+		t.Fatalf("CreateTag must force-move the tag, got %q", strings.Join(got, " "))
+	}
+}
+
+// TestRunErrorIncludesGitOutput covers the second half of the same incident:
+// the failure was reported as a bare "exit status 1", so why the push failed
+// was unknowable from the run log.
+func TestRunErrorIncludesGitOutput(t *testing.T) {
+	git := staticMockGit([]byte("remote: Permission denied\nfatal: unable to access"), fmt.Errorf("exit status 1"))
+	err := git.PushTag(context.Background(), "v1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "Permission denied") {
+		t.Fatalf("error must carry git's own output, got: %v", err)
+	}
+}
+
+func TestRunErrorRedactsCredentials(t *testing.T) {
+	git := staticMockGit([]byte("fatal: unable to access 'https://ghp_secrettoken@github.com/o/r/': 403"), fmt.Errorf("exit status 1"))
+	err := git.PushTag(context.Background(), "v1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if strings.Contains(err.Error(), "ghp_secrettoken") {
+		t.Fatalf("token leaked into error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "https://***@github.com") {
+		t.Fatalf("expected redacted remote, got: %v", err)
 	}
 }

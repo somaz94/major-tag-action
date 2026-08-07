@@ -151,19 +151,15 @@ func (t *Tagger) configureTokenAuth(ctx context.Context, token string) error {
 	return t.git.SetRemoteURL(ctx, newURL)
 }
 
-// UpdateTag deletes the old tag (if exists) and creates a new one pointing to commitSHA.
+// UpdateTag points tagName at commitSHA, locally and on origin, whether or not
+// the tag already exists.
+//
+// It does NOT delete the tag first. The remote side is a single force push, so
+// a failure leaves the tag pointing where it did before instead of leaving it
+// deleted — the state that took this action's own release pipeline down, since
+// the workflow that recreates `v1` is itself referenced as `@v1`.
 func (t *Tagger) UpdateTag(ctx context.Context, tagName, commitSHA string) error {
-	if t.git.TagExists(ctx, tagName) {
-		output.LogInfo("Deleting existing tag '" + tagName + "'")
-		if err := t.git.DeleteLocalTag(ctx, tagName); err != nil {
-			return err
-		}
-		if err := t.git.DeleteRemoteTag(ctx, tagName); err != nil {
-			output.LogWarning("Failed to delete remote tag '" + tagName + "' (may not exist): continuing")
-		}
-	}
-
-	output.LogInfo("Creating tag '" + tagName + "' pointing to " + commitSHA)
+	output.LogInfo("Pointing tag '" + tagName + "' at " + commitSHA)
 	if err := t.git.CreateTag(ctx, tagName, commitSHA); err != nil {
 		return err
 	}

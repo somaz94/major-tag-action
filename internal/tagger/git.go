@@ -45,15 +45,35 @@ func DefaultGit() *Git {
 	return NewGit(&ExecRunner{})
 }
 
+// credentialInURL matches the userinfo component of a URL, so the token in
+// https://<token>@github.com/owner/repo can be stripped before git's output
+// reaches a log. Actions masks registered secrets, but a token handed in as a
+// plain input is not registered, and this output is the one place git echoes
+// the authenticated remote back.
+var credentialInURL = regexp.MustCompile(`(https?://)[^/@\s]+@`)
+
 // run executes a git command through the runner, trims the trailing
 // whitespace from its output, and wraps any error with a human-readable
 // description ("failed to <desc>: <cause>").
+//
+// git writes the actual reason for a failure to stderr, which CombinedOutput
+// already captures. Discarding it left errors reading "failed to push tag
+// \"v1\": exit status 1" — enough to know a push failed and nothing about why.
+// That is what made a real v1 disappearance undiagnosable after the fact.
 func (g *Git) run(ctx context.Context, desc string, args ...string) (string, error) {
 	out, err := g.runner.Run(ctx, args...)
 	if err != nil {
+		if detail := strings.TrimSpace(string(out)); detail != "" {
+			return "", fmt.Errorf("failed to %s: %w: %s", desc, err, redactCredentials(detail))
+		}
 		return "", fmt.Errorf("failed to %s: %w", desc, err)
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// redactCredentials replaces any userinfo in a URL with "***".
+func redactCredentials(s string) string {
+	return credentialInURL.ReplaceAllString(s, "${1}***@")
 }
 
 // ConfigureSafeDirectory adds the workspace as a git safe directory.
@@ -92,27 +112,28 @@ func (g *Git) TagExists(ctx context.Context, tag string) bool {
 	return out == tag
 }
 
-// DeleteLocalTag deletes a local tag.
-func (g *Git) DeleteLocalTag(ctx context.Context, tag string) error {
-	_, err := g.run(ctx, fmt.Sprintf("delete local tag %q", tag), "tag", "-d", tag)
-	return err
-}
-
-// DeleteRemoteTag deletes a remote tag.
-func (g *Git) DeleteRemoteTag(ctx context.Context, tag string) error {
-	_, err := g.run(ctx, fmt.Sprintf("delete remote tag %q", tag), "push", "origin", ":refs/tags/"+tag)
-	return err
-}
-
-// CreateTag creates a local tag pointing to a specific commit.
+// CreateTag points a local tag at a specific commit, moving it if it already
+// exists. `-f` is what makes this safe to call without deleting first.
 func (g *Git) CreateTag(ctx context.Context, tag, commitSHA string) error {
-	_, err := g.run(ctx, fmt.Sprintf("create tag %q", tag), "tag", tag, commitSHA)
+	_, err := g.run(ctx, fmt.Sprintf("create tag %q", tag), "tag", "-f", tag, commitSHA)
 	return err
 }
 
-// PushTag pushes a tag to origin.
+// PushTag publishes a tag to origin, overwriting whatever the remote ref
+// pointed at.
+//
+// This is one remote operation, and that is the point. Moving the tag by
+// deleting the remote ref and then pushing a new one is two, and a failure
+// between them leaves the tag GONE rather than merely stale — which is exactly
+// how `v1` vanished on 2026-08-07: the delete succeeded, the push that would
+// have recreated it did not. A force push that fails leaves the old ref
+// standing, so the worst case is a tag that did not move.
+//
+// The refspec is fully qualified so the remote cannot resolve `v1` to a branch
+// of the same name.
 func (g *Git) PushTag(ctx context.Context, tag string) error {
-	_, err := g.run(ctx, fmt.Sprintf("push tag %q", tag), "push", "origin", tag)
+	_, err := g.run(ctx, fmt.Sprintf("push tag %q", tag), "push", "--force", "origin",
+		fmt.Sprintf("refs/tags/%s:refs/tags/%s", tag, tag))
 	return err
 }
 
