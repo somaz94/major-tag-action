@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-08-07)
+## [v1.1.0](https://github.com/somaz94/major-tag-action/compare/v1.0.4...v1.1.0) (2026-08-07)
 
 ### Performance Improvements
 
@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Continuous Integration
 
+- pin the self-referencing major-tag step to an exact version ([3561104](https://github.com/somaz94/major-tag-action/commit/356110469d72a1cc011a98f141061dd59c0255b9))
 - add a golangci-lint config scoped to defect-finding linters ([4363630](https://github.com/somaz94/major-tag-action/commit/43636300ee28e03fdc8ba7dd66e4762080b8fe25))
 
 ### Contributors
