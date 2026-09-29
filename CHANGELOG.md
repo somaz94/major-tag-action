@@ -2,11 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-08-07)
+## [v1.1.2](https://github.com/somaz94/major-tag-action/compare/v1.1.1...v1.1.2) (2026-09-29)
+
+### Bug Fixes
+
+- print outputs plainly instead of the deprecated set-output command ([b36e28f](https://github.com/somaz94/major-tag-action/commit/b36e28f67a5b734455dd8278ef2a3a294a0288f1))
 
 ### Continuous Integration
 
+- correct stale image-seeding comments ([07cc484](https://github.com/somaz94/major-tag-action/commit/07cc4846faa7fd71f562e571605caa9f7da7b422))
+- trim redundant comments in gitlab-mirror workflow ([6560e80](https://github.com/somaz94/major-tag-action/commit/6560e80b0c4054344add56b9d1b425b0b56a150e))
+- correct the image-seeding comment in the release workflow ([e502331](https://github.com/somaz94/major-tag-action/commit/e5023312746f5305c52d82fa5651e461b14dfea2))
+- retry mirror pushes on transient remote failures ([35432bf](https://github.com/somaz94/major-tag-action/commit/35432bfd51b7a8b89eedeb57eb7860ebdf95dfce))
+- drop the dead issue-close trigger from changelog generation ([04df0e2](https://github.com/somaz94/major-tag-action/commit/04df0e21a066aa02a7775c627b294b79cce4e9f4))
+- skip release-triggered runs on the image-seeding dispatch ([51652c1](https://github.com/somaz94/major-tag-action/commit/51652c1bf73bc4c1ecb85017ba1cf2a292d86594))
 - call the shared release workflow instead of duplicating it ([ec43214](https://github.com/somaz94/major-tag-action/commit/ec4321485fbec4fb894a3aca8d1e13b03a697dba))
+
+### Chores
+
+- bump the action image to v1.1.2 ([ca18a6b](https://github.com/somaz94/major-tag-action/commit/ca18a6bd167f591baf6ca894cf498f41988aedc3))
+- **deps:** bump golang in the docker-minor group (#8) ([#8](https://github.com/somaz94/major-tag-action/pull/8)) ([9bf78df](https://github.com/somaz94/major-tag-action/commit/9bf78df415d92a44f914cbcbbe827be9fcf9a6a9))
 
 ### Contributors
 
