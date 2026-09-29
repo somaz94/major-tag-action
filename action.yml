@@ -38,7 +38,7 @@ runs:
   # (~31s on a sibling action). Subtle: this version's image must be published
   # (release.yml workflow_dispatch) before its git tag is pushed, and a runner
   # can pull only the pushed platforms (linux/amd64, linux/arm64).
-  image: docker://ghcr.io/somaz94/major-tag-action:v1.1.1
+  image: docker://ghcr.io/somaz94/major-tag-action:v1.1.2
   env:
     INPUT_TAG: ${{ inputs.tag }}
     INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
