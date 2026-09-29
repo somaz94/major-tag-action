@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.1.3](https://github.com/somaz94/major-tag-action/compare/v1.1.2...v1.1.3) (2026-09-29)
+
+### Bug Fixes
+
+- configure git through the process environment instead of ~/.gitconfig ([6ff731f](https://github.com/somaz94/major-tag-action/commit/6ff731f314ad1f0b7c5b46729b0eab937b809394))
+
+### Chores
+
+- bump the action image to v1.1.3 ([b5006f7](https://github.com/somaz94/major-tag-action/commit/b5006f7a031a27d8c40e0e0ffb3a5eacde85a616))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v1.1.2](https://github.com/somaz94/major-tag-action/compare/v1.1.1...v1.1.2) (2026-09-29)
 
 ### Bug Fixes
