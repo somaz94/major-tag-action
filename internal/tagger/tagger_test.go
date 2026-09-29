@@ -5,28 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 )
-
-// TestMain isolates git's global/system config into throwaway temp files. The
-// tests here drive ConfigureSafeDirectory through a mock runner, so they do not
-// touch real git today; this guard keeps any future real-runner test from
-// leaking `safe.directory` entries into the developer's ~/.gitconfig.
-func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "major-tag-action-gitconfig")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create temp gitconfig dir: %v\n", err)
-		os.Exit(1)
-	}
-	os.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(dir, "config"))
-	os.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
-	code := m.Run()
-	_ = os.RemoveAll(dir)
-	os.Exit(code)
-}
 
 // MockRunner implements GitRunner for testing.
 type MockRunner struct {
@@ -637,10 +619,9 @@ func TestRunDefaultWorkspace(t *testing.T) {
 }
 
 func TestRunSafeDirectoryError(t *testing.T) {
+	isolateGitConfigEnv(t)
+	t.Setenv("GIT_CONFIG_COUNT", "bogus")
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
-		if args[0] == "config" {
-			return nil, fmt.Errorf("config error")
-		}
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
@@ -810,14 +791,24 @@ func TestSetRemoteURLError(t *testing.T) {
 }
 
 func TestConfigureSafeDirectory(t *testing.T) {
-	git := staticMockGit([]byte(""), nil)
+	isolateGitConfigEnv(t)
+	git := newMockGit(func(args ...string) ([]byte, error) {
+		t.Errorf("expected no git call, got %v", args)
+		return nil, nil
+	})
 	if err := git.ConfigureSafeDirectory(context.Background(), "/workspace"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []string{"safe.directory=/workspace"}
+	if got := gitConfigEntries(t); !slices.Equal(got, want) {
+		t.Errorf("expected entries %v, got %v", want, got)
 	}
 }
 
 func TestConfigureSafeDirectoryError(t *testing.T) {
-	git := staticMockGit(nil, fmt.Errorf("config error"))
+	isolateGitConfigEnv(t)
+	t.Setenv("GIT_CONFIG_COUNT", "bogus")
+	git := staticMockGit([]byte(""), nil)
 	err := git.ConfigureSafeDirectory(context.Background(), "/workspace")
 	if err == nil {
 		t.Fatal("expected error")

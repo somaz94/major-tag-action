@@ -76,12 +76,12 @@ func redactCredentials(s string) string {
 	return credentialInURL.ReplaceAllString(s, "${1}***@")
 }
 
-// ConfigureSafeDirectory adds the workspace as a git safe directory.
-func (g *Git) ConfigureSafeDirectory(ctx context.Context, dir string) error {
+// ConfigureSafeDirectory trusts dir for every child git of this process through
+// env config, so no git config file is written.
+func (g *Git) ConfigureSafeDirectory(_ context.Context, dir string) error {
 	// Return the raw error unwrapped: the caller logs it as a warning and
 	// double-prefixing ("failed to ...: failed to ...") reads poorly there.
-	_, err := g.runner.Run(ctx, "config", "--global", "--add", "safe.directory", dir)
-	return err
+	return AddConfigEnv("safe.directory", dir)
 }
 
 // FetchTags fetches all tags from origin.
