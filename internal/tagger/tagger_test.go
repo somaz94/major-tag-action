@@ -147,10 +147,16 @@ func TestFetchTags(t *testing.T) {
 }
 
 func TestFetchTagsError(t *testing.T) {
-	git := staticMockGit(nil, fmt.Errorf("fetch error"))
+	git := staticMockGit([]byte("fatal: could not read from remote repository\n"), fmt.Errorf("exit status 128"))
 
-	if err := git.FetchTags(context.Background()); err == nil {
+	err := git.FetchTags(context.Background())
+	if err == nil {
 		t.Fatal("expected error")
+	}
+	for _, want := range []string{"failed to fetch tags", "exit status 128", "could not read from remote repository"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not contain %q", err, want)
+		}
 	}
 }
 

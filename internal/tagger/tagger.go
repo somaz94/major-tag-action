@@ -201,7 +201,7 @@ func (t *Tagger) Run(ctx context.Context, tag string, majorOnly bool, token, ssh
 	}
 
 	if err := t.git.FetchTags(ctx); err != nil {
-		return nil, fmt.Errorf("failed to fetch tags: %w", err)
+		return nil, err
 	}
 
 	commitSHA, err := t.git.ResolveTagSHA(ctx, tag)

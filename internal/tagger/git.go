@@ -79,8 +79,7 @@ func (g *Git) ConfigureSafeDirectory(_ context.Context, dir string) error {
 
 // FetchTags fetches all tags from origin.
 func (g *Git) FetchTags(ctx context.Context) error {
-	// Return the raw error: the caller wraps it with "failed to fetch tags".
-	_, err := g.runner.Run(ctx, "fetch", "--tags", "--force")
+	_, err := g.run(ctx, "fetch tags", "fetch", "--tags", "--force")
 	return err
 }
 
