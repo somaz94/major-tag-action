@@ -52,14 +52,9 @@ func DefaultGit() *Git {
 // the authenticated remote back.
 var credentialInURL = regexp.MustCompile(`(https?://)[^/@\s]+@`)
 
-// run executes a git command through the runner, trims the trailing
-// whitespace from its output, and wraps any error with a human-readable
-// description ("failed to <desc>: <cause>").
-//
-// git writes the actual reason for a failure to stderr, which CombinedOutput
-// already captures. Discarding it left errors reading "failed to push tag
-// \"v1\": exit status 1" — enough to know a push failed and nothing about why.
-// That is what made a real v1 disappearance undiagnosable after the fact.
+// run trims git's output and wraps a failure as "failed to <desc>: <err>[: <output>]"
+// (credentials redacted). git's stderr is the only record of why a command failed;
+// dropping it is what left the 2026-08-07 `v1` loss undiagnosable.
 func (g *Git) run(ctx context.Context, desc string, args ...string) (string, error) {
 	out, err := g.runner.Run(ctx, args...)
 	if err != nil {
@@ -79,8 +74,6 @@ func redactCredentials(s string) string {
 // ConfigureSafeDirectory trusts dir for every child git of this process through
 // env config, so no git config file is written.
 func (g *Git) ConfigureSafeDirectory(_ context.Context, dir string) error {
-	// Return the raw error unwrapped: the caller logs it as a warning and
-	// double-prefixing ("failed to ...: failed to ...") reads poorly there.
 	return AddConfigEnv("safe.directory", dir)
 }
 

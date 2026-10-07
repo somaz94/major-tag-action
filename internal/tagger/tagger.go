@@ -152,12 +152,8 @@ func (t *Tagger) configureTokenAuth(ctx context.Context, token string) error {
 }
 
 // UpdateTag points tagName at commitSHA, locally and on origin, whether or not
-// the tag already exists.
-//
-// It does NOT delete the tag first. The remote side is a single force push, so
-// a failure leaves the tag pointing where it did before instead of leaving it
-// deleted — the state that took this action's own release pipeline down, since
-// the workflow that recreates `v1` is itself referenced as `@v1`.
+// the tag already exists. It never deletes first (see PushTag): a deleted `v1`
+// cannot be restored by this action, whose own release workflow runs it as `@v1`.
 func (t *Tagger) UpdateTag(ctx context.Context, tagName, commitSHA string) error {
 	output.LogInfo("Pointing tag '" + tagName + "' at " + commitSHA)
 	if err := t.git.CreateTag(ctx, tagName, commitSHA); err != nil {
@@ -185,7 +181,6 @@ func (t *Tagger) Run(ctx context.Context, tag string, majorOnly bool, token, ssh
 	output.LogInfo("Tag: " + tag)
 	output.LogInfo("Major version tag: " + majorTag)
 
-	// Configure safe directory
 	workspace := resolveWorkspace()
 	if err := t.git.ConfigureSafeDirectory(ctx, workspace); err != nil {
 		output.LogWarning("Failed to set git safe.directory: " + err.Error())

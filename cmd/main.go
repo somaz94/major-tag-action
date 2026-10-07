@@ -54,7 +54,6 @@ func run(ctx context.Context, t *tagger.Tagger) error {
 		return fmt.Errorf("failed to update major tag: %w", err)
 	}
 
-	// Set outputs
 	outputs := []struct {
 		name  string
 		value string
