@@ -39,9 +39,6 @@ func TestRunSuccess(t *testing.T) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
-		}
 		if args[0] == "remote" {
 			return []byte("https://github.com/owner/repo.git\n"), nil
 		}
@@ -87,9 +84,6 @@ func TestRunWithGitHubOutput(t *testing.T) {
 	tgr := newTestTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
-		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
 		}
 		if args[0] == "remote" {
 			return []byte("https://github.com/owner/repo.git\n"), nil

@@ -29,7 +29,7 @@ make lint        # Run go vet
 - `cmd/` — Entry point (main.go, context/signal handling)
 - `internal/config/` — Configuration from env vars (INPUT_*), with Validate() method
 - `internal/tagger/` — Core logic with interface-based dependency injection:
-  - `errors.go` — Sentinel errors (ErrInvalidTag, ErrAuthFailed, ErrTagUpdate, ErrInvalidSHA)
+  - `errors.go` — Sentinel errors for `errors.Is` checks
   - `git.go` — GitRunner interface, ExecRunner implementation, Git struct with methods
   - `tagger.go` — Tagger struct orchestrating tag update workflow
 - `internal/output/` — GitHub Actions output helpers

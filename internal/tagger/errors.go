@@ -10,9 +10,6 @@ var (
 	// ErrAuthFailed indicates authentication configuration failure.
 	ErrAuthFailed = errors.New("failed to configure authentication")
 
-	// ErrTagUpdate indicates a tag update operation failure.
-	ErrTagUpdate = errors.New("failed to update tag")
-
 	// ErrInvalidSHA indicates an invalid commit SHA format.
 	ErrInvalidSHA = errors.New("invalid commit SHA format")
 )

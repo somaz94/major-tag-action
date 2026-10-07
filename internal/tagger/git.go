@@ -96,15 +96,6 @@ func (g *Git) ResolveTagSHA(ctx context.Context, tag string) (string, error) {
 	return sha, nil
 }
 
-// TagExists checks if a tag exists locally.
-func (g *Git) TagExists(ctx context.Context, tag string) bool {
-	out, err := g.run(ctx, fmt.Sprintf("list tag %q", tag), "tag", "-l", tag)
-	if err != nil {
-		return false
-	}
-	return out == tag
-}
-
 // CreateTag points a local tag at a specific commit, moving it if it already
 // exists. `-f` is what makes this safe to call without deleting first.
 func (g *Git) CreateTag(ctx context.Context, tag, commitSHA string) error {

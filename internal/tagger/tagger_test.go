@@ -104,30 +104,6 @@ func TestParseMinorTag(t *testing.T) {
 	}
 }
 
-func TestTagExists(t *testing.T) {
-	git := staticMockGit([]byte("v1\n"), nil)
-
-	if !git.TagExists(context.Background(), "v1") {
-		t.Error("expected tag to exist")
-	}
-}
-
-func TestTagExistsNotFound(t *testing.T) {
-	git := staticMockGit([]byte("\n"), nil)
-
-	if git.TagExists(context.Background(), "v1") {
-		t.Error("expected tag not to exist")
-	}
-}
-
-func TestTagExistsError(t *testing.T) {
-	git := staticMockGit(nil, fmt.Errorf("git error"))
-
-	if git.TagExists(context.Background(), "v1") {
-		t.Error("expected false on error")
-	}
-}
-
 func TestResolveTagSHA(t *testing.T) {
 	validSHA := "abc1234567890abc1234567890abc1234567890a"
 	git := staticMockGit([]byte(validSHA+"\n"), nil)
@@ -199,25 +175,8 @@ func TestGetRemoteURLError(t *testing.T) {
 	}
 }
 
-func TestUpdateTagNew(t *testing.T) {
+func TestUpdateTag(t *testing.T) {
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
-		}
-		return []byte(""), nil
-	})
-
-	err := tgr.UpdateTag(context.Background(), "v1", "abc123")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestUpdateTagExisting(t *testing.T) {
-	tgr := newMockTagger(func(args ...string) ([]byte, error) {
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte("v1\n"), nil
-		}
 		return []byte(""), nil
 	})
 
@@ -229,9 +188,6 @@ func TestUpdateTagExisting(t *testing.T) {
 
 func TestUpdateTagCreateError(t *testing.T) {
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
-		}
 		if args[0] == "tag" && len(args) > 2 {
 			return nil, fmt.Errorf("create error")
 		}
@@ -246,9 +202,6 @@ func TestUpdateTagCreateError(t *testing.T) {
 
 func TestUpdateTagPushError(t *testing.T) {
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
-		}
 		if args[0] == "push" {
 			return nil, fmt.Errorf("push error")
 		}
@@ -265,9 +218,6 @@ func TestRunSuccess(t *testing.T) {
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
-		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
 		}
 		if args[0] == "remote" {
 			return []byte("https://github.com/owner/repo.git\n"), nil
@@ -296,9 +246,6 @@ func TestRunWithMinorTag(t *testing.T) {
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
-		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
 		}
 		if args[0] == "remote" {
 			return []byte("https://github.com/owner/repo.git\n"), nil
@@ -495,9 +442,6 @@ func TestRunUpdateMajorTagError(t *testing.T) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
-		}
 		if args[0] == "tag" && len(args) > 2 {
 			return nil, fmt.Errorf("tag create error")
 		}
@@ -607,9 +551,6 @@ func TestRunMinorTagUpdateError(t *testing.T) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
-		}
 		if args[0] == "tag" && len(args) > 2 {
 			callCount++
 			if callCount > 1 {
@@ -637,9 +578,6 @@ func TestRunDefaultWorkspace(t *testing.T) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
-		}
 		if args[0] == "remote" {
 			return []byte("https://github.com/owner/repo.git\n"), nil
 		}
@@ -665,9 +603,6 @@ func TestRunSafeDirectoryError(t *testing.T) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
 		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
-		}
 		if args[0] == "remote" {
 			return []byte("https://github.com/owner/repo.git\n"), nil
 		}
@@ -690,9 +625,6 @@ func TestRunWithSSHKey(t *testing.T) {
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "rev-list" {
 			return []byte("abc123def456abc123def456abc123def456abc1\n"), nil
-		}
-		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil
 		}
 		return []byte(""), nil
 	})
