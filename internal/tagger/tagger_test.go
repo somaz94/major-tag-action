@@ -200,7 +200,7 @@ func TestGetRemoteURLError(t *testing.T) {
 func TestUpdateTagNew(t *testing.T) {
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte(""), nil // tag doesn't exist
+			return []byte(""), nil
 		}
 		return []byte(""), nil
 	})
@@ -214,7 +214,7 @@ func TestUpdateTagNew(t *testing.T) {
 func TestUpdateTagExisting(t *testing.T) {
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		if args[0] == "tag" && len(args) > 1 && args[1] == "-l" {
-			return []byte("v1\n"), nil // tag exists
+			return []byte("v1\n"), nil
 		}
 		return []byte(""), nil
 	})
@@ -495,10 +495,10 @@ func TestRunAuthError(t *testing.T) {
 }
 
 func TestConfigureSSHAuthBadHome(t *testing.T) {
-	// HOME pointing to a read-only file to trigger MkdirAll error
+	// HOME is a regular file, so MkdirAll($HOME/.ssh) fails with ENOTDIR.
 	tmpDir := t.TempDir()
 	badPath := tmpDir + "/blocked"
-	os.WriteFile(badPath, []byte("x"), 0444) // create file, not dir
+	os.WriteFile(badPath, []byte("x"), 0444)
 	t.Setenv("HOME", badPath)
 
 	err := configureSSHAuth("fake-key")
@@ -722,7 +722,6 @@ func TestRunContextCancelled(t *testing.T) {
 }
 
 func TestNewGitAndDefaultGit(t *testing.T) {
-	// Test NewGit with custom runner
 	mock := &MockRunner{Fn: func(args ...string) ([]byte, error) {
 		return []byte("ok"), nil
 	}}
@@ -731,7 +730,6 @@ func TestNewGitAndDefaultGit(t *testing.T) {
 		t.Fatal("expected non-nil Git")
 	}
 
-	// Test DefaultGit creates ExecRunner
 	defaultGit := DefaultGit()
 	if defaultGit == nil {
 		t.Fatal("expected non-nil default Git")

@@ -59,8 +59,7 @@ jobs:
     name: Smoke Test (With Minor Tag)
     runs-on: ubuntu-latest
     needs: [smoke-test-major-only]
-    # `Create release` also runs as the pre-tag image-seeding dispatch, when @v1
-    # still resolves to the previous release; smoke-test only the tag-push run.
+    # Same gate as smoke-test-major-only.
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&

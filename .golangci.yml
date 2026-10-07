@@ -5,7 +5,7 @@ run:
   allow-parallel-runners: true
 
 # Defect-finding linters only. Style checks (goconst, dupl, lll, gocyclo, prealloc)
-# are off on purpose: hundreds of non-bug findings would keep `make lint` red and ignored.
+# are off on purpose: hundreds of non-bug findings would bury the real ones.
 linters:
   default: none
   enable:
