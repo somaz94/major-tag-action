@@ -25,6 +25,9 @@ const (
 
 	// tokenAuthURLFormat is the URL template for token-based authentication.
 	tokenAuthURLFormat = "https://x-access-token:%s@github.com/%s.git"
+
+	// sshAuthURLFormat is the URL template for SSH key authentication.
+	sshAuthURLFormat = "git@github.com:%s.git"
 )
 
 // Result holds the output of the tag update operation.
@@ -90,7 +93,7 @@ func sshDir() (string, error) {
 // ConfigureAuth sets up git authentication using token or SSH key.
 func (t *Tagger) ConfigureAuth(ctx context.Context, token, sshKey string) error {
 	if sshKey != "" {
-		return configureSSHAuth(sshKey)
+		return t.configureSSHAuth(ctx, sshKey)
 	}
 	if token != "" {
 		return t.configureTokenAuth(ctx, token)
@@ -98,7 +101,7 @@ func (t *Tagger) ConfigureAuth(ctx context.Context, token, sshKey string) error 
 	return nil
 }
 
-func configureSSHAuth(sshKey string) error {
+func (t *Tagger) configureSSHAuth(ctx context.Context, sshKey string) error {
 	sshPath, err := sshDir()
 	if err != nil {
 		return err
@@ -107,6 +110,11 @@ func configureSSHAuth(sshKey string) error {
 		return fmt.Errorf("failed to create .ssh directory: %w", err)
 	}
 
+	// OpenSSH rejects a key file without a trailing newline ("invalid format"),
+	// and a key pasted into a secret often loses it.
+	if !strings.HasSuffix(sshKey, "\n") {
+		sshKey += "\n"
+	}
 	keyPath := filepath.Join(sshPath, "id_rsa")
 	if err := os.WriteFile(keyPath, []byte(sshKey), 0600); err != nil {
 		return fmt.Errorf("failed to write SSH key: %w", err)
@@ -117,7 +125,22 @@ func configureSSHAuth(sshKey string) error {
 		return fmt.Errorf("failed to write known_hosts: %w", err)
 	}
 
-	return nil
+	// ssh finds ~/.ssh through the passwd entry, not $HOME: in the container HOME
+	// is /github/home but root's home is /root, so both files are named explicitly.
+	sshCommand := fmt.Sprintf("ssh -i '%s' -o IdentitiesOnly=yes -o UserKnownHostsFile='%s' -o StrictHostKeyChecking=yes",
+		keyPath, knownHostsPath)
+	if err := AddConfigEnv("core.sshCommand", sshCommand); err != nil {
+		return err
+	}
+
+	repoPath, err := t.githubRepoPath(ctx)
+	if err != nil {
+		return err
+	}
+	if repoPath == "" {
+		return nil
+	}
+	return t.git.SetRemoteURL(ctx, fmt.Sprintf(sshAuthURLFormat, repoPath))
 }
 
 // extractRepoPath extracts the owner/repo path from a GitHub remote URL.
@@ -139,19 +162,27 @@ func extractRepoPath(remoteURL string) string {
 	return repoPath
 }
 
-func (t *Tagger) configureTokenAuth(ctx context.Context, token string) error {
+// githubRepoPath returns origin's owner/repo, or "" when origin is not on github.com.
+func (t *Tagger) githubRepoPath(ctx context.Context) (string, error) {
 	remoteURL, err := t.git.GetRemoteURL(ctx)
+	if err != nil {
+		return "", err
+	}
+	if !strings.Contains(remoteURL, "github.com") {
+		return "", nil
+	}
+	return extractRepoPath(remoteURL), nil
+}
+
+func (t *Tagger) configureTokenAuth(ctx context.Context, token string) error {
+	repoPath, err := t.githubRepoPath(ctx)
 	if err != nil {
 		return err
 	}
-
-	if !strings.Contains(remoteURL, "github.com") {
+	if repoPath == "" {
 		return nil
 	}
-
-	repoPath := extractRepoPath(remoteURL)
-	newURL := fmt.Sprintf(tokenAuthURLFormat, token, repoPath)
-	return t.git.SetRemoteURL(ctx, newURL)
+	return t.git.SetRemoteURL(ctx, fmt.Sprintf(tokenAuthURLFormat, token, repoPath))
 }
 
 // UpdateTag points tagName at commitSHA, locally and on origin, whether or not

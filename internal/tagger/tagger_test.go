@@ -379,10 +379,18 @@ func TestConfigureTokenAuthNonGitHub(t *testing.T) {
 }
 
 func TestConfigureSSHAuth(t *testing.T) {
+	isolateGitConfigEnv(t)
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
+	var setURL string
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
+		if args[0] == "remote" && args[1] == "get-url" {
+			return []byte("https://github.com/owner/repo.git\n"), nil
+		}
+		if args[0] == "remote" && args[1] == "set-url" {
+			setURL = args[3]
+		}
 		return []byte(""), nil
 	})
 
@@ -391,12 +399,87 @@ func TestConfigureSSHAuth(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got, err := os.ReadFile(home + "/.ssh/known_hosts")
+	if setURL != "git@github.com:owner/repo.git" {
+		t.Errorf("origin set to %q, want git@github.com:owner/repo.git", setURL)
+	}
+
+	key, err := os.ReadFile(home + "/.ssh/id_rsa")
+	if err != nil {
+		t.Fatalf("failed to read key: %v", err)
+	}
+	if string(key) != "fake-ssh-key-content\n" {
+		t.Errorf("key = %q, want a trailing newline appended", key)
+	}
+
+	knownHosts, err := os.ReadFile(home + "/.ssh/known_hosts")
 	if err != nil {
 		t.Fatalf("failed to read known_hosts: %v", err)
 	}
-	if string(got) != githubKnownHosts {
-		t.Errorf("known_hosts = %q, want githubKnownHosts", got)
+	if string(knownHosts) != githubKnownHosts {
+		t.Errorf("known_hosts = %q, want githubKnownHosts", knownHosts)
+	}
+
+	wantCmd := "core.sshCommand=ssh -i '" + home + "/.ssh/id_rsa' -o IdentitiesOnly=yes -o UserKnownHostsFile='" +
+		home + "/.ssh/known_hosts' -o StrictHostKeyChecking=yes"
+	if got := gitConfigEntries(t); !slices.Equal(got, []string{wantCmd}) {
+		t.Errorf("git config env = %q, want [%q]", got, wantCmd)
+	}
+}
+
+func TestConfigureSSHAuthKeepsTrailingNewline(t *testing.T) {
+	isolateGitConfigEnv(t)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	tgr := NewTagger(staticMockGit(nil, nil))
+	if err := tgr.ConfigureAuth(context.Background(), "", "fake-ssh-key-content\n"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	key, err := os.ReadFile(home + "/.ssh/id_rsa")
+	if err != nil {
+		t.Fatalf("failed to read key: %v", err)
+	}
+	if string(key) != "fake-ssh-key-content\n" {
+		t.Errorf("key = %q, want it unchanged", key)
+	}
+}
+
+func TestConfigureSSHAuthNonGitHubRemote(t *testing.T) {
+	isolateGitConfigEnv(t)
+	t.Setenv("HOME", t.TempDir())
+
+	tgr := newMockTagger(func(args ...string) ([]byte, error) {
+		if args[0] == "remote" && args[1] == "set-url" {
+			t.Errorf("unexpected set-url for a non-GitHub origin: %v", args)
+		}
+		return []byte("https://gitlab.example.com/owner/repo.git\n"), nil
+	})
+
+	if err := tgr.ConfigureAuth(context.Background(), "", "fake-ssh-key"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestConfigureSSHAuthRemoteError(t *testing.T) {
+	isolateGitConfigEnv(t)
+	t.Setenv("HOME", t.TempDir())
+
+	tgr := NewTagger(staticMockGit(nil, fmt.Errorf("no remote")))
+	if err := tgr.ConfigureAuth(context.Background(), "", "fake-ssh-key"); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestConfigureSSHAuthConfigEnvError(t *testing.T) {
+	isolateGitConfigEnv(t)
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GIT_CONFIG_COUNT", "bogus")
+
+	tgr := NewTagger(staticMockGit(nil, nil))
+	err := tgr.ConfigureAuth(context.Background(), "", "fake-ssh-key")
+	if err == nil || !strings.Contains(err.Error(), "invalid GIT_CONFIG_COUNT") {
+		t.Fatalf("expected invalid GIT_CONFIG_COUNT error, got: %v", err)
 	}
 }
 
@@ -491,7 +574,7 @@ func TestConfigureSSHAuthBadHome(t *testing.T) {
 	os.WriteFile(badPath, []byte("x"), 0444)
 	t.Setenv("HOME", badPath)
 
-	err := configureSSHAuth("fake-key")
+	err := NewTagger(staticMockGit(nil, nil)).configureSSHAuth(context.Background(), "fake-key")
 	if err == nil {
 		t.Fatal("expected error for bad HOME path")
 	}
@@ -503,7 +586,7 @@ func TestConfigureSSHAuthWriteKeyError(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 	os.MkdirAll(tmpDir+"/.ssh/id_rsa", 0700) // create dir where file should be
 
-	err := configureSSHAuth("fake-key")
+	err := NewTagger(staticMockGit(nil, nil)).configureSSHAuth(context.Background(), "fake-key")
 	if err == nil {
 		t.Fatal("expected error for write key failure")
 	}
@@ -515,7 +598,7 @@ func TestConfigureSSHAuthWriteKnownHostsError(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 	os.MkdirAll(tmpDir+"/.ssh/known_hosts", 0700) // create dir where file should be
 
-	err := configureSSHAuth("fake-key")
+	err := NewTagger(staticMockGit(nil, nil)).configureSSHAuth(context.Background(), "fake-key")
 	if err == nil {
 		t.Fatal("expected error for write known_hosts failure")
 	}
@@ -635,6 +718,7 @@ func TestRunWithSSHKey(t *testing.T) {
 		return []byte(""), nil
 	})
 
+	isolateGitConfigEnv(t)
 	t.Setenv("GITHUB_WORKSPACE", "/workspace")
 	t.Setenv("HOME", t.TempDir())
 
@@ -650,7 +734,7 @@ func TestRunWithSSHKey(t *testing.T) {
 func TestConfigureSSHAuthEmptyHome(t *testing.T) {
 	t.Setenv("HOME", "")
 
-	err := configureSSHAuth("fake-key")
+	err := NewTagger(staticMockGit(nil, nil)).configureSSHAuth(context.Background(), "fake-key")
 	if err == nil {
 		t.Fatal("expected error for empty HOME")
 	}

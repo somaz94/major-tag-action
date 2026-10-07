@@ -104,6 +104,8 @@ This updates both `v1` and `v1.2` for a `v1.2.3` release.
     ssh_key: ${{ secrets.SSH_PRIVATE_KEY }}
 ```
 
+The key needs push access to the repository, for example as a deploy key with write access. When `ssh_key` is set, the action points `origin` at `git@github.com:<owner>/<repo>.git` and verifies the host against GitHub's published SSH host keys, so the checkout step can stay on HTTPS.
+
 <br/>
 
 ## Inputs
