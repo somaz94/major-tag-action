@@ -167,7 +167,7 @@ GitHub Actions users reference actions by major version (e.g., `uses: owner/acti
 
 ### Prerequisites
 
-- Go 1.26+
+- Go (the version in `go.mod`)
 - Docker (for container builds)
 
 <br/>
