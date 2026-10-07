@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.1.6](https://github.com/somaz94/major-tag-action/compare/v1.1.5...v1.1.6) (2026-10-07)
+
+### Bug Fixes
+
+- parse ssh:// origin URLs when extracting owner/repo ([8e052c8](https://github.com/somaz94/major-tag-action/commit/8e052c88283d4282515624902d3ea4359ef10eff))
+- stop logging a shutdown signal on a normal exit ([d1750d0](https://github.com/somaz94/major-tag-action/commit/d1750d0e58f291453ccd90c77caf2eae439f7dec))
+
+### Continuous Integration
+
+- drop the smoke test gate that needs already enforces ([ef828ac](https://github.com/somaz94/major-tag-action/commit/ef828ac218e77497432547f9871e5078de0097ec))
+- assert the expected failure in the dry-run steps ([f6ba3ae](https://github.com/somaz94/major-tag-action/commit/f6ba3aedc8d33377f7ad897517e344e0fb16bd34))
+
+### Chores
+
+- bump the action image to v1.1.6 ([d0f30b5](https://github.com/somaz94/major-tag-action/commit/d0f30b547ed34e6758afa59243f26410d55f4b19))
+- tighten comments in git.go and Dockerfile ([9428d6a](https://github.com/somaz94/major-tag-action/commit/9428d6af35df007a975004c5fc383746fbcd31fe))
+- trim redundant comments in tests and workflows ([591cd4e](https://github.com/somaz94/major-tag-action/commit/591cd4eedf021de01f4916aa139b518f77957b7c))
+- drop Node.js entries from .gitignore ([4655f8d](https://github.com/somaz94/major-tag-action/commit/4655f8d2d558f44631be947c7afc4714b6f1995b))
+- run golangci-lint from make lint ([aa3caf1](https://github.com/somaz94/major-tag-action/commit/aa3caf17979dfe94b6a4c41fba8d66fae748f873))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v1.1.5](https://github.com/somaz94/major-tag-action/compare/v1.1.4...v1.1.5) (2026-10-07)
 
 ### Bug Fixes
