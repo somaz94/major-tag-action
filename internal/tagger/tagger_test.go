@@ -2,6 +2,8 @@ package tagger
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -424,7 +426,8 @@ func TestConfigureTokenAuthNonGitHub(t *testing.T) {
 }
 
 func TestConfigureSSHAuth(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 
 	tgr := newMockTagger(func(args ...string) ([]byte, error) {
 		return []byte(""), nil
@@ -433,6 +436,43 @@ func TestConfigureSSHAuth(t *testing.T) {
 	err := tgr.ConfigureAuth(context.Background(), "", "fake-ssh-key-content")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got, err := os.ReadFile(home + "/.ssh/known_hosts")
+	if err != nil {
+		t.Fatalf("failed to read known_hosts: %v", err)
+	}
+	if string(got) != githubKnownHosts {
+		t.Errorf("known_hosts = %q, want githubKnownHosts", got)
+	}
+}
+
+// Fingerprints from docs.github.com "GitHub's SSH key fingerprints".
+func TestGitHubKnownHostsFingerprints(t *testing.T) {
+	want := map[string]string{
+		"ssh-ed25519":         "SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU",
+		"ecdsa-sha2-nistp256": "SHA256:p2QAMXNIC1TJYWeIOttrVc98/R1BUFWu3/LiyKgUfQM",
+		"ssh-rsa":             "SHA256:uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s",
+	}
+
+	for _, line := range strings.Split(strings.TrimSuffix(githubKnownHosts, "\n"), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 3 || fields[0] != "github.com" {
+			t.Fatalf("malformed known_hosts line: %q", line)
+		}
+		keyType := fields[1]
+		blob, err := base64.StdEncoding.DecodeString(fields[2])
+		if err != nil {
+			t.Fatalf("%s: invalid base64: %v", keyType, err)
+		}
+		sum := sha256.Sum256(blob)
+		if got := "SHA256:" + base64.RawStdEncoding.EncodeToString(sum[:]); got != want[keyType] {
+			t.Errorf("%s fingerprint = %s, want %s", keyType, got, want[keyType])
+		}
+		delete(want, keyType)
+	}
+	for keyType := range want {
+		t.Errorf("missing %s host key", keyType)
 	}
 }
 
