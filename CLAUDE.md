@@ -31,6 +31,7 @@ make lint        # Run go vet
 - `internal/tagger/` — Core logic with interface-based dependency injection:
   - `errors.go` — Sentinel errors for `errors.Is` checks
   - `git.go` — GitRunner interface, ExecRunner implementation, Git struct with methods
+  - `configenv.go` — `AddConfigEnv`: git config through `GIT_CONFIG_*` env, so no config file is written
   - `tagger.go` — Tagger struct orchestrating tag update workflow
 - `internal/output/` — GitHub Actions output helpers
 
@@ -58,6 +59,6 @@ Outputs: `major_tag`, `minor_tag`, `commit_sha`
 ## CI
 
 - `ci.yml` — Unit tests (85% coverage threshold), Docker build, action validation
-- Docker: multi-stage build (golang:1.26-alpine → alpine:3.23)
+- Docker: multi-stage build (golang alpine builder → alpine runtime; image versions are pinned in `Dockerfile`)
 
 <br/>
