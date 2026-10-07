@@ -19,7 +19,7 @@ make build       # Build binary
 make test        # Unit tests with coverage (85% threshold in CI)
 make cover       # Generate coverage report
 make fmt         # Format code
-make lint        # Run go vet
+make lint        # Run go vet and golangci-lint
 ```
 
 <br/>

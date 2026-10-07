@@ -33,8 +33,9 @@ bench: ## Run benchmarks
 
 ## Quality
 
-lint: ## Run go vet
+lint: ## Run go vet and golangci-lint
 	go vet ./...
+	golangci-lint run ./...
 
 fmt: ## Format code
 	gofmt -s -w .
