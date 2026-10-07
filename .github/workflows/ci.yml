@@ -39,11 +39,18 @@ jobs:
           manage_registry: 'false'
 
       - name: Run the Container (dry-run)
+        # No repository is mounted, so the image must start, parse its inputs and
+        # fail at the first git call; any other outcome means the image is broken.
         run: |
-          docker run \
+          if out=$(docker run \
             --env INPUT_TAG="v1.0.0" \
             --env INPUT_MAJOR_ONLY="true" \
-            --rm "${{ steps.ci.outputs.image_ref }}" 2>&1 || true
+            --rm "${{ steps.ci.outputs.image_ref }}" 2>&1) ||
+            ! grep -q 'not a git repository' <<<"$out"; then
+            echo "$out"
+            echo "::error::expected the container to fail at its first git call"
+            exit 1
+          fi
 
   test-action:
     name: GitHub Actions Test
@@ -61,9 +68,15 @@ jobs:
           go-version-file: go.mod
 
       - name: Run binary directly (dry validation)
+        # v0.0.0 is never tagged, so the run must stop resolving it, before any push.
         run: |
           go build -o major-tag-action ./cmd/main.go
-          INPUT_TAG="v1.2.3" INPUT_MAJOR_ONLY="true" ./major-tag-action 2>&1 || true
+          if out=$(INPUT_TAG="v0.0.0" INPUT_MAJOR_ONLY="true" ./major-tag-action 2>&1) ||
+            ! grep -q 'failed to resolve SHA for tag "v0.0.0"' <<<"$out"; then
+            echo "$out"
+            echo "::error::expected the binary to stop at resolving v0.0.0"
+            exit 1
+          fi
 
   ci-result:
     name: CI Result
