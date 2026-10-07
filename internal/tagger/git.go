@@ -45,11 +45,9 @@ func DefaultGit() *Git {
 	return NewGit(&ExecRunner{})
 }
 
-// credentialInURL matches the userinfo component of a URL, so the token in
-// https://<token>@github.com/owner/repo can be stripped before git's output
-// reaches a log. Actions masks registered secrets, but a token handed in as a
-// plain input is not registered, and this output is the one place git echoes
-// the authenticated remote back.
+// credentialInURL matches URL userinfo so a token in https://<token>@github.com/...
+// is redacted from git output: a token passed as a plain input is not a
+// registered secret, so Actions does not mask it.
 var credentialInURL = regexp.MustCompile(`(https?://)[^/@\s]+@`)
 
 // run trims git's output and wraps a failure as "failed to <desc>: <err>[: <output>]"
@@ -102,18 +100,10 @@ func (g *Git) CreateTag(ctx context.Context, tag, commitSHA string) error {
 	return err
 }
 
-// PushTag publishes a tag to origin, overwriting whatever the remote ref
-// pointed at.
-//
-// This is one remote operation, and that is the point. Moving the tag by
-// deleting the remote ref and then pushing a new one is two, and a failure
-// between them leaves the tag GONE rather than merely stale — which is exactly
-// how `v1` vanished on 2026-08-07: the delete succeeded, the push that would
-// have recreated it did not. A force push that fails leaves the old ref
-// standing, so the worst case is a tag that did not move.
-//
-// The refspec is fully qualified so the remote cannot resolve `v1` to a branch
-// of the same name.
+// PushTag force-pushes tag to origin as a single remote operation. Delete-then-push
+// is two, and a failure between them leaves the tag gone rather than stale, which
+// is how `v1` vanished on 2026-08-07. The fully qualified refspec stops the remote
+// resolving `v1` to a same-named branch.
 func (g *Git) PushTag(ctx context.Context, tag string) error {
 	_, err := g.run(ctx, fmt.Sprintf("push tag %q", tag), "push", "--force", "origin",
 		fmt.Sprintf("refs/tags/%s:refs/tags/%s", tag, tag))

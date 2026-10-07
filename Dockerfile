@@ -1,9 +1,6 @@
 # Build stage
-# Pinned to the BUILD platform, not the target: the image is published
-# multi-arch, and letting the toolchain stage run under QEMU emulation to
-# produce an arm64 binary is minutes of emulated compilation for no reason. Go
-# cross-compiles natively instead, driven by the TARGET* args buildx injects.
-# `$BUILDPLATFORM` needs BuildKit, the default builder since Docker 23.
+# Pinned to the build platform: Go cross-compiles via the TARGET* args instead
+# of running the toolchain under QEMU for arm64. `$BUILDPLATFORM` needs BuildKit.
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
 
 ARG TARGETOS=linux
