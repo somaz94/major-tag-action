@@ -618,6 +618,19 @@ func TestExtractRepoPathSSH(t *testing.T) {
 	}
 }
 
+func TestExtractRepoPathURLForms(t *testing.T) {
+	for _, remote := range []string{
+		"ssh://git@github.com/owner/repo.git",
+		"ssh://git@github.com:22/owner/repo.git",
+		"https://user:pass@github.com/owner/repo.git",
+		"https://github.com/owner/repo",
+	} {
+		if got := extractRepoPath(remote); got != "owner/repo" {
+			t.Errorf("extractRepoPath(%q) = %q, want owner/repo", remote, got)
+		}
+	}
+}
+
 func TestExtractRepoPathPlain(t *testing.T) {
 	// URL without github.com prefix patterns → returns as-is minus .git
 	result := extractRepoPath("https://gitlab.com/owner/repo.git")

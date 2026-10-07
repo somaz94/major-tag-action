@@ -3,6 +3,7 @@ package tagger
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -143,20 +144,16 @@ func (t *Tagger) configureSSHAuth(ctx context.Context, sshKey string) error {
 	return t.git.SetRemoteURL(ctx, fmt.Sprintf(sshAuthURLFormat, repoPath))
 }
 
-// extractRepoPath extracts the owner/repo path from a GitHub remote URL.
+// extractRepoPath extracts the owner/repo path from a GitHub remote URL, in
+// https://, ssh:// (with or without a port) or scp-like git@github.com: form.
 func extractRepoPath(remoteURL string) string {
 	repoPath := strings.TrimSuffix(remoteURL, ".git")
 
-	if strings.HasPrefix(repoPath, "https://") {
-		parts := strings.SplitN(repoPath, "github.com/", 2)
-		if len(parts) == 2 {
-			return parts[1]
-		}
-	} else if strings.Contains(repoPath, "github.com:") {
-		parts := strings.SplitN(repoPath, "github.com:", 2)
-		if len(parts) == 2 {
-			return parts[1]
-		}
+	if u, err := url.Parse(repoPath); err == nil && u.Hostname() == "github.com" && u.Path != "" {
+		return strings.TrimPrefix(u.Path, "/")
+	}
+	if _, rest, ok := strings.Cut(repoPath, "github.com:"); ok {
+		return rest
 	}
 
 	return repoPath
