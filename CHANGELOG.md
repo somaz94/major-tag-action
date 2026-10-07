@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.1.4](https://github.com/somaz94/major-tag-action/compare/v1.1.3...v1.1.4) (2026-10-07)
+
+### Bug Fixes
+
+- write GitHub's full SSH host keys to known_hosts ([c45c131](https://github.com/somaz94/major-tag-action/commit/c45c131074aeffc01a6ae9f756acb389fe02f54a))
+
+### Chores
+
+- bump the action image to v1.1.4 ([a84dd98](https://github.com/somaz94/major-tag-action/commit/a84dd9829e14beb4a5cb826837e936302bc86f40))
+- trim stale and redundant comments in Go source and Dockerfile ([838186e](https://github.com/somaz94/major-tag-action/commit/838186e2688f433966a3861e3ef97e00a30a43ca))
+- trim stale and redundant comments in tests and CI config ([5222adb](https://github.com/somaz94/major-tag-action/commit/5222adbbe0f29419650bfb18e7c0443d3731b121))
+- tighten golangci-lint config comments ([dfb18c8](https://github.com/somaz94/major-tag-action/commit/dfb18c83633370b049528069c861196b8787e063))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v1.1.3](https://github.com/somaz94/major-tag-action/compare/v1.1.2...v1.1.3) (2026-09-29)
 
 ### Bug Fixes
