@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.1.5](https://github.com/somaz94/major-tag-action/compare/v1.1.4...v1.1.5) (2026-10-07)
+
+### Bug Fixes
+
+- make ssh_key auth use the key it writes ([9ee5337](https://github.com/somaz94/major-tag-action/commit/9ee5337129630f5705aac41ca92062558003df5b))
+- keep git's output when fetching tags fails ([9ba092b](https://github.com/somaz94/major-tag-action/commit/9ba092b92318cc5852d5c0a65d28d1765c4874c4))
+
+### Code Refactoring
+
+- remove unused TagExists and ErrTagUpdate ([c7965fa](https://github.com/somaz94/major-tag-action/commit/c7965fae09cb8f4caae49c1b8cde48591e1c5c91))
+
+### Documentation
+
+- list configenv.go and drop pinned image versions in CLAUDE.md ([b809373](https://github.com/somaz94/major-tag-action/commit/b809373b9aab41dd26ef0d3d4a3999ba2748c45e))
+
+### Builds
+
+- build and test with the Go version in go.mod ([16dfb64](https://github.com/somaz94/major-tag-action/commit/16dfb646432d7d842527efd3d9c5cdc3b3322c24))
+
+### Chores
+
+- bump the action image to v1.1.5 ([c9fa677](https://github.com/somaz94/major-tag-action/commit/c9fa6779b9f6318939eb00a195bbf22d11ee379f))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v1.1.4](https://github.com/somaz94/major-tag-action/compare/v1.1.3...v1.1.4) (2026-10-07)
 
 ### Bug Fixes
