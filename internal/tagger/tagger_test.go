@@ -584,7 +584,7 @@ func TestConfigureSSHAuthWriteKeyError(t *testing.T) {
 	// .ssh dir exists but key path is a directory → WriteFile fails
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
-	os.MkdirAll(tmpDir+"/.ssh/id_rsa", 0700) // create dir where file should be
+	os.MkdirAll(tmpDir+"/.ssh/id_rsa", 0700)
 
 	err := NewTagger(staticMockGit(nil, nil)).configureSSHAuth(context.Background(), "fake-key")
 	if err == nil {
@@ -596,7 +596,7 @@ func TestConfigureSSHAuthWriteKnownHostsError(t *testing.T) {
 	// key write succeeds, but known_hosts path is a directory → WriteFile fails
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
-	os.MkdirAll(tmpDir+"/.ssh/known_hosts", 0700) // create dir where file should be
+	os.MkdirAll(tmpDir+"/.ssh/known_hosts", 0700)
 
 	err := NewTagger(staticMockGit(nil, nil)).configureSSHAuth(context.Background(), "fake-key")
 	if err == nil {
@@ -632,7 +632,6 @@ func TestExtractRepoPathURLForms(t *testing.T) {
 }
 
 func TestExtractRepoPathPlain(t *testing.T) {
-	// URL without github.com prefix patterns → returns as-is minus .git
 	result := extractRepoPath("https://gitlab.com/owner/repo.git")
 	if result != "https://gitlab.com/owner/repo" {
 		t.Errorf("unexpected result: %s", result)
@@ -686,7 +685,6 @@ func TestRunDefaultWorkspace(t *testing.T) {
 		return []byte(""), nil
 	})
 
-	// No GITHUB_WORKSPACE set - should use default
 	t.Setenv("GITHUB_WORKSPACE", "")
 
 	result, err := tgr.Run(context.Background(), "v1.0.0", true, "token", "")
