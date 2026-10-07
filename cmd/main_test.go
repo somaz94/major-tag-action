@@ -3,9 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/somaz94/major-tag-action/internal/tagger"
 )
@@ -127,5 +131,63 @@ func TestRunCancelled(t *testing.T) {
 	}
 	if err.Error() != "cancelled" {
 		t.Errorf("expected 'cancelled' error, got %q", err.Error())
+	}
+}
+
+// captureStdout returns what fn printed to stdout.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = orig }()
+
+	fn()
+
+	w.Close()
+	out, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("failed to read stdout: %v", err)
+	}
+	return string(out)
+}
+
+func TestNotifyShutdownStopIsSilent(t *testing.T) {
+	out := captureStdout(t, func() {
+		ctx, stop := notifyShutdown()
+		stop()
+		if ctx.Err() == nil {
+			t.Error("expected stop to cancel the context")
+		}
+	})
+	if out != "" {
+		t.Errorf("stop logged %q, want nothing", out)
+	}
+}
+
+func TestNotifyShutdownOnSignal(t *testing.T) {
+	out := captureStdout(t, func() {
+		ctx, stop := notifyShutdown()
+		defer stop()
+
+		self, err := os.FindProcess(os.Getpid())
+		if err != nil {
+			t.Fatalf("failed to find own process: %v", err)
+		}
+		if err := self.Signal(syscall.SIGTERM); err != nil {
+			t.Fatalf("failed to send SIGTERM: %v", err)
+		}
+
+		select {
+		case <-ctx.Done():
+		case <-time.After(5 * time.Second):
+			t.Fatal("context not cancelled after SIGTERM")
+		}
+	})
+	if !strings.Contains(out, "::warning::Received shutdown signal") {
+		t.Errorf("expected a shutdown warning, got %q", out)
 	}
 }

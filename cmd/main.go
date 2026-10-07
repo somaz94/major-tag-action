@@ -13,24 +13,38 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigCh
-		output.LogWarning("Received shutdown signal, cleaning up...")
-		cancel()
-	}()
-	defer func() {
-		signal.Stop(sigCh)
-		close(sigCh)
-	}()
+	ctx, stop := notifyShutdown()
+	defer stop()
 
 	if err := run(ctx, tagger.DefaultTagger()); err != nil {
 		output.LogError(err.Error())
 		os.Exit(1)
+	}
+}
+
+// notifyShutdown returns a context cancelled on SIGINT or SIGTERM, and a stop
+// function that releases the handler. stop waits for the watcher to exit, so a
+// normal exit never logs a shutdown.
+func notifyShutdown() (context.Context, func()) {
+	ctx, cancel := context.WithCancel(context.Background())
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		select {
+		case <-sigCh:
+			output.LogWarning("Received shutdown signal, cleaning up...")
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	return ctx, func() {
+		signal.Stop(sigCh)
+		cancel()
+		<-done
 	}
 }
 
